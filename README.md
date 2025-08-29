@@ -1,15 +1,10 @@
-# ATB Last Show Finder
+ # LastShowFinder (SF/NYC)
 
-A tool to find the last show information for ATB (All That Bass).
+Find the most recent **already-played** show for an artist in SF or NYC with URL+snippet evidence.
 
-## Description
-
-This project helps users find information about the last show or performance.
-
-## Getting Started
-
-More details to be added as the project develops.
-
-## License
-
-[Add your license here]
+## Quickstart
+```bash
+# Code track
+uvicorn worker:app --reload
+# Make track
+Import the blueprint JSON in /make/blueprints and set PPLX_API_KEY
