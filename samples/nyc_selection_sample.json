@@ -1,0 +1,30 @@
+{
+  "metro": "NYC",
+  "date_iso": "2024-10-11",
+  "venue": "Irving Plaza",
+  "city": "New York",
+  "evidence": [
+    {
+      "url": "https://www.songkick.com/artists/9224649-slenderbodies/gigography",
+      "snippet": "slenderbodies with Tim Atlas at Irving Plaza, New York (NYC), NY, US 17 Irving Place"
+    }
+  ],
+  "alternates": [
+    {
+      "url": "https://www.songkick.com/artists/9224649-slenderbodies/gigography",
+      "snippet": "slenderbodies at Sofar Sounds, Brooklyn, NY, US"
+    },
+    {
+      "url": "https://www.songkick.com/artists/9224649-slenderbodies/gigography",
+      "snippet": "slenderbodies with EDEN at Terminal 5, Manhattan, NY, US 610 W. 56th St."
+    }
+  ],
+  "notes": {
+    "canceled": false,
+    "multi_night_series": false
+  },
+  "audit": {
+    "decision_path": ["latest_date"],
+    "candidates_considered": 3
+  }
+}

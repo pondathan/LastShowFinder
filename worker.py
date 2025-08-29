@@ -70,10 +70,12 @@ class Candidate(BaseModel):
     source_type: str
     snippet: str
     canceled: bool = False
+    source_host: Optional[str] = None  # NEW: For debugging and deduplication
 
 class SongkickRequest(BaseModel):
-    artist: str
+    artist: Optional[str] = None  # Optional when URL is provided
     slug: Optional[str] = None
+    url: Optional[str] = None  # NEW: Accept full URLs
     max_pages: int = Field(default=8, le=8)
 
 class ParseRequest(BaseModel):
@@ -119,6 +121,117 @@ class UnknownResponse(BaseModel):
     audit: Audit
 
 # Helper functions
+def validate_date_sanity(date_iso: str) -> bool:
+    """Enhanced date validation with stricter bounds and format checking."""
+    try:
+        # Must be valid ISO format
+        if not re.match(r'^\d{4}-\d{2}-\d{2}$', date_iso):
+            return False
+            
+        year = int(date_iso[:4])
+        month = int(date_iso[5:7])
+        day = int(date_iso[8:10])
+        
+        current_year = datetime.now().year
+        
+        # Year bounds: 1900 to current + 2
+        if not (1900 <= year <= (current_year + 2)):
+            return False
+            
+        # Month bounds: 1-12
+        if not (1 <= month <= 12):
+            return False
+            
+        # Day bounds: 1-31 (basic check)
+        if not (1 <= day <= 31):
+            return False
+            
+        return True
+    except (ValueError, IndexError):
+        return False
+
+# Address cleaning patterns for fallback date parsing
+ADDRESS_SUFFIXES = r"(?:st|street|ave|avenue|blvd|boulevard|rd|road|dr|drive|ct|court|ln|lane|way|terrace|ter|pl|place|pkwy|parkway)"
+ADDRESS_RE = re.compile(rf"\b\d{{1,5}}\s+[A-Za-z0-9.\-']+(?:\s+[A-Za-z0-9.\-']+)*\s+{ADDRESS_SUFFIXES}\b\.?", re.IGNORECASE)
+PHONE_RE = re.compile(r"\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b")
+ZIP_RE = re.compile(r"\b\d{5}(?:-\d{4})?\b")
+
+def clean_gig_item_text(text: str) -> str:
+    """Strip street addresses, phone numbers, and zip codes from a block before date parsing."""
+    t = ADDRESS_RE.sub("", text)
+    t = PHONE_RE.sub("", t)
+    t = ZIP_RE.sub("", t)
+    # collapse extra whitespace
+    return " ".join(t.split())
+
+# Songkick row parsing patterns
+VENUE_HREF_RE = re.compile(r"/venues/\d+")
+METRO_HREF_RE = re.compile(r"/metro-areas/\d+")
+LOCATION_CLASS_RE = re.compile(r"\blocation\b", re.I)
+
+def nearest_row(time_tag) -> any:
+    """Find the nearest row container that contains both time and venue/city info."""
+    p = time_tag
+    for _ in range(6):  # Look up to 6 levels up
+        if not p: 
+            break
+        # A "row" has the time tag and at least some links/text:
+        if p.find("time") and (p.find("a") or p.find(class_=LOCATION_CLASS_RE)):
+            return p
+        p = p.parent
+    return time_tag.parent or time_tag
+
+def extract_row_candidate(time_tag, page_url: str, artist_name: str | None = None) -> dict | None:
+    """Extract a single candidate from a Songkick row, row-scoped only."""
+    date_iso = time_tag.get("datetime")
+    if not date_iso:
+        # Prefer datetime; fallback to text only if needed
+        txt = time_tag.get_text(" ", strip=True)
+        if not txt:
+            return None
+        # Use the existing parse_date function for text dates
+        date_iso = parse_date(txt)
+        if not date_iso:
+            return None
+    
+    row = nearest_row(time_tag)
+    
+    # Venue via href pattern
+    venue = None
+    for a in row.find_all("a", href=True):
+        if VENUE_HREF_RE.search(a["href"]):
+            venue = a.get_text(" ", strip=True)
+            break
+    
+    # City/metro via href pattern, else .location text
+    city = None
+    metro_a = next((a for a in row.find_all("a", href=True) if METRO_HREF_RE.search(a["href"])), None)
+    if metro_a:
+        city = metro_a.get_text(" ", strip=True)
+    else:
+        loc = row.find(class_=LOCATION_CLASS_RE)
+        if loc:
+            city = loc.get_text(" ", strip=True)
+    
+    snippet = " ".join(row.get_text(" ", strip=True).split())
+    host = urlparse(page_url).netloc
+    
+    # Skip rows with date but no city and no venue
+    if not city and not venue:
+        logger.debug(f"Skipping row with date {date_iso} but no city/venue: {snippet[:100]}")
+        return None
+    
+    return {
+        "date_iso": date_iso,
+        "city": city or "",
+        "venue": venue or "",
+        "url": page_url,
+        "source_type": "songkick",
+        "source_host": host,
+        "snippet": snippet,
+        "canceled": False
+    }
+
 def parse_date(date_text: str) -> Optional[str]:
     """Parse various date formats to ISO string."""
     if not date_text:
@@ -143,6 +256,201 @@ def parse_date(date_text: str) -> Optional[str]:
         pass
     
     return None
+
+def dedupe_candidates(candidates: List[Candidate]) -> List[Candidate]:
+    """Remove duplicate candidates based on key fields."""
+    seen = set()
+    unique = []
+    
+    for candidate in candidates:
+        # Create deduplication key
+        key = (
+            candidate.date_iso,
+            candidate.venue.lower().strip() if candidate.venue else "",
+            candidate.city.lower().strip() if candidate.city else "",
+            urlparse(candidate.url).netloc
+        )
+        
+        if key not in seen:
+            seen.add(key)
+            unique.append(candidate)
+    
+    return unique
+
+async def parse_generic_internal(url: str, html_content: str) -> List[Candidate]:
+    """Internal version of parse_generic without HTTP fallback to avoid recursion."""
+    candidates = []
+    
+    try:
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        # Parse up to ~200 DOM nodes for dates
+        date_elements = []
+        
+        # Look for time elements with datetime attributes
+        time_elements = soup.find_all('time', attrs={'datetime': True})
+        date_elements.extend(time_elements)
+        
+        # Look for elements containing dates
+        text_elements = soup.find_all(['span', 'div', 'p', 'li'], string=re.compile(r'\d{4}'))
+        date_elements.extend(text_elements[:100])  # Limit to avoid too many
+        
+        # Look for elements with date-like classes
+        date_class_elements = soup.find_all(class_=re.compile(r'date|time|event'))
+        date_elements.extend(date_class_elements[:50])
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_elements = []
+        for elem in date_elements:
+            elem_id = id(elem)
+            if elem_id not in seen:
+                seen.add(elem_id)
+                unique_elements.append(elem)
+        
+        # Limit to ~200 elements total
+        unique_elements = unique_elements[:200]
+        
+        for elem in unique_elements:
+            try:
+                # Extract date
+                date_iso = None
+                
+                # Try datetime attribute first
+                if elem.name == 'time' and elem.get('datetime'):
+                    date_iso = elem['datetime'][:10]
+                else:
+                    # Parse text content
+                    date_text = elem.get_text()
+                    date_iso = parse_date(date_text)
+                
+                # Validate date sanity
+                if not date_iso or not validate_date_sanity(date_iso):
+                    if date_iso:
+                        logger.warning(f"Rejecting insane date: {date_iso}")
+                    continue
+                
+                # Extract city and venue
+                city = ""
+                venue = ""
+                
+                # Look for city in nearby text
+                parent_text = elem.parent.get_text() if elem.parent else ""
+                grandparent_text = elem.parent.parent.get_text() if elem.parent and elem.parent.parent else ""
+                
+                # Check for metro tokens
+                for metro, tokens in METRO_TOKENS.items():
+                    for token in tokens:
+                        if token.lower() in parent_text.lower() or token.lower() in grandparent_text.lower():
+                            city = token
+                            break
+                    if city:
+                        break
+                
+                # Extract venue
+                venue = extract_venue_from_snippet(parent_text) or extract_venue_from_snippet(grandparent_text)
+                
+                # Check for canceled/postponed
+                text_content = parent_text + " " + grandparent_text
+                canceled = any(word in text_content.lower() for word in ['canceled', 'cancelled', 'postponed', 'rescheduled'])
+                
+                # Check for upcoming/presale (skip these)
+                if any(word in text_content.lower() for word in ['upcoming', 'on sale', 'presale', 'tickets available']):
+                    continue
+                
+                # Create snippet
+                snippet = parent_text[:500] if parent_text else elem.get_text()[:500]
+                
+                # Infer source type
+                source_type = infer_source_type(url)
+                
+                candidate = Candidate(
+                    date_iso=date_iso,
+                    city=city,
+                    venue=venue,
+                    url=url,
+                    source_type=source_type,
+                    snippet=snippet,
+                    canceled=canceled,
+                    source_host=urlparse(url).netloc
+                )
+                
+                candidates.append(candidate)
+                
+            except Exception as e:
+                logger.warning(f"Failed to parse element: {e}")
+                continue
+        
+        # Remove duplicates based on date + city + venue
+        unique_candidates = []
+        seen_combinations = set()
+        for candidate in candidates:
+            combo = (candidate.date_iso, candidate.city, candidate.venue)
+            if combo not in seen_combinations:
+                seen_combinations.add(combo)
+                unique_candidates.append(candidate)
+        
+        return unique_candidates
+        
+    except Exception as e:
+        logger.error(f"Internal parsing failed: {e}")
+        return []
+
+async def wayback_parse_internal(url: str, from_year: int = 2023, limit: int = 2) -> List[Candidate]:
+    """Internal function for Wayback fallback during parse-generic."""
+    try:
+        # CDX query to get snapshots
+        cdx_url = f"http://web.archive.org/cdx/search/cdx"
+        params = {
+            "url": url,
+            "from": str(from_year),
+            "to": str(datetime.now().year),
+            "output": "json",
+            "limit": str(limit)
+        }
+        
+        response = await http_client.get(cdx_url, params=params)
+        response.raise_for_status()
+        
+        snapshot_data = response.json()
+        if not snapshot_data or len(snapshot_data) <= 1:  # First row is headers
+            return []
+        
+        # Get the latest snapshots
+        snapshots = snapshot_data[1:limit+1]  # Skip header row
+        candidates = []
+        
+        for snapshot in snapshots:
+            try:
+                if len(snapshot) >= 3:
+                    timestamp = snapshot[1]  # YYYYMMDDHHMMSS
+                    snapshot_url = f"http://web.archive.org/web/{timestamp}/{url}"
+                    
+                    # Fetch the snapshot
+                    snapshot_response = await http_client.get(snapshot_url)
+                    snapshot_response.raise_for_status()
+                    
+                    # Parse like generic parser but with internal call
+                    snapshot_candidates = await parse_generic_internal(snapshot_url, snapshot_response.text)
+                    
+                    # Mark as from Wayback
+                    for candidate in snapshot_candidates:
+                        candidate.source_type = f"wayback_{candidate.source_type}"
+                        candidate.url = snapshot_url
+                        candidate.source_host = urlparse(url).netloc
+                    
+                    candidates.extend(snapshot_candidates)
+                    
+            except Exception as e:
+                logger.warning(f"Failed to parse snapshot: {e}")
+                continue
+        
+        logger.info(f"Wayback fallback parsed {len(candidates)} candidates from {len(snapshots)} snapshots")
+        return candidates
+        
+    except Exception as e:
+        logger.warning(f"Wayback fallback failed: {e}")
+        return []
 
 def belongs_to_metro(city: str, venue: str, metro: str) -> bool:
     """Check if a candidate belongs to the specified metro area."""
@@ -282,11 +590,22 @@ async def scrape_songkick(request: SongkickRequest):
     """Scrape Songkick gigography pages for an artist."""
     candidates = []
     
-    # Generate slug if not provided
-    if not request.slug:
-        slug = re.sub(r'[^a-zA-Z0-9]+', '-', request.artist.lower()).strip('-')
-    else:
+    # Extract slug from URL if provided
+    if request.url:
+        slug_match = re.search(r"https?://(?:www\.)?songkick\.com/artists/([^/]+)/?", request.url)
+        if slug_match:
+            slug = slug_match.group(1)
+            logger.info(f"Extracted slug '{slug}' from URL: {request.url}")
+        else:
+            raise HTTPException(status_code=400, detail="Invalid Songkick URL format")
+    elif request.slug:
         slug = request.slug
+    else:
+        # Fallback to current auto-slugging with warning
+        if not request.artist:
+            raise HTTPException(status_code=400, detail="Either artist, slug, or url must be provided")
+        slug = re.sub(r'[^a-zA-Z0-9]+', '-', request.artist.lower()).strip('-')
+        logger.warning(f"Auto-generated slug '{slug}' for artist '{request.artist}' - may not work")
     
     try:
         for page in range(1, min(request.max_pages + 1, 9)):
@@ -298,68 +617,100 @@ async def scrape_songkick(request: SongkickRequest):
                 
                 soup = BeautifulSoup(response.text, 'html.parser')
                 
-                # Look for gig items
-                gig_items = soup.find_all('li', class_='gig-item') or soup.find_all('div', class_='gig-item')
+                # Row-scoped parsing: find all <time datetime> tags and extract from their rows
+                time_tags = soup.find_all('time', attrs={'datetime': True})
                 
-                for item in gig_items:
+                for time_tag in time_tags:
                     try:
-                        # Extract date
-                        date_elem = item.find('time', attrs={'datetime': True})
-                        if date_elem:
-                            date_iso = date_elem['datetime'][:10]  # YYYY-MM-DD
-                        else:
-                            # Try to find date in text
-                            date_text = item.get_text()
-                            date_iso = parse_date(date_text)
-                            if not date_iso:
-                                continue
-                        
-                        # Extract city and venue
-                        city_elem = item.find('span', class_='city') or item.find('a', class_='city')
-                        city = city_elem.get_text().strip() if city_elem else ""
-                        
-                        venue_elem = item.find('span', class_='venue') or item.find('a', class_='venue')
-                        venue = venue_elem.get_text().strip() if venue_elem else ""
-                        
-                        # Extract URL
-                        link_elem = item.find('a', href=True)
-                        url = f"https://www.songkick.com{link_elem['href']}" if link_elem else ""
-                        
-                        # Extract snippet
-                        snippet = item.get_text()[:500]  # Limit snippet length
-                        
-                        # Check for canceled/postponed
-                        canceled = any(word in snippet.lower() for word in ['canceled', 'cancelled', 'postponed', 'rescheduled'])
-                        
-                        # Check for upcoming/presale
-                        if any(word in snippet.lower() for word in ['upcoming', 'on sale', 'presale', 'tickets']):
+                        # Extract candidate from this specific row only
+                        candidate_data = extract_row_candidate(time_tag, url, request.artist)
+                        if not candidate_data:
                             continue
                         
+                        # Validate date sanity
+                        if not validate_date_sanity(candidate_data["date_iso"]):
+                            logger.warning(f"Rejecting insane date: {candidate_data['date_iso']}")
+                            continue
+                        
+                        # Check for canceled/postponed
+                        canceled = any(word in candidate_data["snippet"].lower() for word in ['canceled', 'cancelled', 'postponed', 'rescheduled'])
+                        
+                        # Check for upcoming/presale
+                        if any(word in candidate_data["snippet"].lower() for word in ['upcoming', 'on sale', 'presale', 'tickets']):
+                            continue
+                        
+                        # Build candidate
                         candidate = Candidate(
-                            date_iso=date_iso,
-                            city=city,
-                            venue=venue,
-                            url=url,
-                            source_type="songkick",
-                            snippet=snippet,
-                            canceled=canceled
+                            date_iso=candidate_data["date_iso"],
+                            city=candidate_data["city"],
+                            venue=candidate_data["venue"],
+                            url=candidate_data["url"],
+                            source_type=candidate_data["source_type"],
+                            snippet=candidate_data["snippet"],
+                            canceled=canceled,
+                            source_host=candidate_data["source_host"]
                         )
+                        
+                        # Log per-candidate data at DEBUG level
+                        logger.debug("Candidate parsed", extra={
+                            "host": candidate.source_host,
+                            "date_iso": candidate.date_iso,
+                            "venue": candidate.venue,
+                            "city": candidate.city,
+                            "url": candidate.url
+                        })
                         
                         candidates.append(candidate)
                         
                     except Exception as e:
-                        logger.warning(f"Failed to parse gig item: {e}")
+                        logger.warning(f"Failed to parse time tag: {e}")
                         continue
                 
-                # If no gig items found, try alternative selectors
-                if not gig_items:
-                    # Look for any elements with dates
-                    date_elements = soup.find_all(['time', 'span', 'div'], string=re.compile(r'\d{4}'))
-                    for elem in date_elements[:20]:  # Limit to first 20
+                # Fallback: only if no time tags found, try minimal text parsing (demoted)
+                if not time_tags:
+                    # Look for elements with dates, but be more selective to avoid street addresses
+                    date_elements = []
+                    
+                    # Look for time elements with datetime attributes (most reliable)
+                    time_elements = soup.find_all('time', attrs={'datetime': True})
+                    date_elements.extend(time_elements)
+                    
+                    # Look for elements with date-like classes or IDs
+                    date_class_elements = soup.find_all(class_=re.compile(r'date|time|event|gig'))
+                    date_elements.extend(date_class_elements[:10])
+                    
+                    # Look for elements with dates, but be more selective to avoid street addresses
+                    date_elements = []
+                    
+                    # Look for time elements with datetime attributes (most reliable)
+                    time_elements = soup.find_all('time', attrs={'datetime': True})
+                    date_elements.extend(time_elements)
+                    
+                    # Look for elements with date-like classes or IDs
+                    date_class_elements = soup.find_all(class_=re.compile(r'date|time|event|gig'))
+                    date_elements.extend(date_class_elements[:10])
+                    
+                    # Look for elements with date-like text patterns (more selective)
+                    for elem in soup.find_all(['span', 'div', 'p']):
+                        # Skip elements that are explicitly address-related
+                        if any(cls in (elem.get("class") or []) for cls in ["street-address", "addr", "address", "postal-address"]):
+                            continue
+                            
+                        text = elem.get_text().strip()
+                        # Only consider elements that look like they contain dates, not addresses
+                        if (re.search(r'\b(?:on|at|playing|performed|shows?|concert|date)\s+\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b', text, re.IGNORECASE) or
+                            re.search(r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b', text)):
+                            # Avoid elements that look like addresses
+                            if not re.search(r'\b\d{4}\s+[A-Za-z]+\s+(?:St|Street|Ave|Avenue|Blvd|Boulevard|Rd|Road)\b', text, re.IGNORECASE):
+                                date_elements.append(elem)
+                                if len(date_elements) >= 20:  # Limit to first 20
+                                    break
+                    
+                    # Process the selected elements
+                    for elem in date_elements:
                         try:
-                            date_text = elem.get_text()
-                            date_iso = parse_date(date_text)
-                            if date_iso:
+                            date_iso = extract_date_from_songkick_row(elem)
+                            if date_iso and validate_date_sanity(date_iso):
                                 # Try to find nearby city/venue info
                                 parent = elem.parent
                                 if parent:
@@ -380,7 +731,8 @@ async def scrape_songkick(request: SongkickRequest):
                                         url=url,
                                         source_type="songkick",
                                         snippet=text[:500],
-                                        canceled=False
+                                        canceled=False,
+                                        source_host=urlparse(url).netloc
                                     )
                                     candidates.append(candidate)
                         except:
@@ -394,7 +746,10 @@ async def scrape_songkick(request: SongkickRequest):
         logger.error(f"Songkick scraping failed: {e}")
         raise HTTPException(status_code=500, detail=f"Songkick scraping failed: {str(e)}")
     
-    logger.info(f"Scraped {len(candidates)} candidates from Songkick for {request.artist}")
+    # Deduplicate candidates before returning
+    candidates = dedupe_candidates(candidates)
+    
+    logger.info(f"Scraped {len(candidates)} unique candidates from Songkick for {request.artist}")
     return candidates
 
 @app.post("/parse-generic", response_model=List[Candidate])
@@ -406,12 +761,29 @@ async def parse_generic(request: ParseRequest):
         if request.html:
             html_content = request.html
             source_url = request.url
+            wayback_fallback = False
         else:
-            # Fetch the URL
-            response = await http_client.get(request.url)
-            response.raise_for_status()
-            html_content = response.text
-            source_url = request.url
+            # Fetch the URL with auto-Wayback fallback
+            try:
+                response = await http_client.get(request.url)
+                response.raise_for_status()
+                html_content = response.text
+                source_url = request.url
+                wayback_fallback = False
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code in [403, 429] or e.response.status_code >= 500:
+                    logger.info(f"Live fetch failed with {e.response.status_code}, trying Wayback fallback")
+                    # Try Wayback fallback
+                    wayback_candidates = await wayback_parse_internal(request.url)
+                    if wayback_candidates:
+                        logger.info(f"Wayback fallback successful, returning {len(wayback_candidates)} candidates")
+                        return wayback_candidates
+                    wayback_fallback = True
+                # Re-raise the error if we can't handle it
+                raise HTTPException(status_code=e.response.status_code, detail=f"HTTP {e.response.status_code}: {str(e)}")
+            except Exception as e:
+                logger.error(f"Unexpected error during live fetch: {e}")
+                raise HTTPException(status_code=500, detail=f"Fetch failed: {str(e)}")
         
         soup = BeautifulSoup(html_content, 'html.parser')
         
@@ -444,7 +816,7 @@ async def parse_generic(request: ParseRequest):
         
         for elem in unique_elements:
             try:
-                # Extract date
+                # Extract date - prefer datetime attribute over text parsing
                 date_iso = None
                 
                 # Try datetime attribute first
@@ -455,7 +827,10 @@ async def parse_generic(request: ParseRequest):
                     date_text = elem.get_text()
                     date_iso = parse_date(date_text)
                 
-                if not date_iso:
+                # Validate date sanity
+                if not date_iso or not validate_date_sanity(date_iso):
+                    if date_iso:
+                        logger.warning(f"Rejecting insane date: {date_iso}")
                     continue
                 
                 # Extract city and venue
@@ -499,7 +874,8 @@ async def parse_generic(request: ParseRequest):
                     url=source_url,
                     source_type=source_type,
                     snippet=snippet,
-                    canceled=canceled
+                    canceled=canceled,
+                    source_host=urlparse(source_url).netloc
                 )
                 
                 candidates.append(candidate)
@@ -508,17 +884,11 @@ async def parse_generic(request: ParseRequest):
                 logger.warning(f"Failed to parse element: {e}")
                 continue
         
-        # Remove duplicates based on date + city + venue
-        unique_candidates = []
-        seen_combinations = set()
-        for candidate in candidates:
-            combo = (candidate.date_iso, candidate.city, candidate.venue)
-            if combo not in seen_combinations:
-                seen_combinations.add(combo)
-                unique_candidates.append(candidate)
+        # Deduplicate candidates using the helper function
+        candidates = dedupe_candidates(candidates)
         
-        logger.info(f"Parsed {len(unique_candidates)} unique candidates from {source_url}")
-        return unique_candidates
+        logger.info(f"Parsed {len(candidates)} unique candidates from {source_url}")
+        return candidates
         
     except Exception as e:
         logger.error(f"Generic parsing failed: {e}")
@@ -605,10 +975,18 @@ async def select_latest(request: SelectRequest):
                     snippet=alt.snippet[:200]  # Limit snippet length
                 ))
             
+            # Determine reason for no selection
+            if not request.candidates:
+                reason = "no_candidates_provided"
+            elif not any(c.city or c.venue for c in request.candidates):
+                reason = "no_metro_candidates"
+            else:
+                reason = "no_valid_dates"
+            
             return UnknownResponse(
                 alternates=alternates_evidence,
                 audit=Audit(
-                    decision_path=decision_path,
+                    decision_path=[reason],
                     candidates_considered=len(request.candidates)
                 )
             )
@@ -633,11 +1011,16 @@ async def select_latest(request: SelectRequest):
             multi_night_series=False  # Could be enhanced later
         )
         
-        # Create audit trail
+        # Create enhanced audit trail
         audit = Audit(
             decision_path=decision_path,
             candidates_considered=len(request.candidates)
         )
+        
+        # Log detailed selection information
+        logger.info(f"Selection for {request.metro}: decision_path={decision_path}, "
+                   f"candidates_considered={len(request.candidates)}, "
+                   f"best_source_type={winner.source_type}, best_url={winner.url}")
         
         logger.info(f"Selected winner for {request.metro}: {winner.venue} on {winner.date_iso}")
         

@@ -1,0 +1,30 @@
+{
+  "metro": "SF",
+  "date_iso": "2024-11-01",
+  "venue": "The Independent SF",
+  "city": "San Francisco",
+  "evidence": [
+    {
+      "url": "https://www.songkick.com/artists/9224649-slenderbodies/gigography",
+      "snippet": "slenderbodies at The Independent SF, San Francisco, CA, US 628 Divisadero Street"
+    }
+  ],
+  "alternates": [
+    {
+      "url": "https://www.songkick.com/artists/9224649-slenderbodies/gigography",
+      "snippet": "slenderbodies with Poolside at Fox Theater, Oakland, CA, US 1807 Telegraph Ave."
+    },
+    {
+      "url": "https://www.songkick.com/request.artist",
+      "snippet": "slenderbodies with EDEN at The Warfield, San Francisco, CA, US 982 Market Street"
+    }
+  ],
+  "notes": {
+    "canceled": false,
+    "multi_night_series": false
+  },
+  "audit": {
+    "decision_path": ["latest_date"],
+    "candidates_considered": 3
+  }
+}
