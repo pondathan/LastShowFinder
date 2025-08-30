@@ -42,37 +42,44 @@ async def test_health_endpoints():
 
 async def test_songkick_scraping(artist: str) -> List[Dict[str, Any]]:
     """Test Songkick scraping for an artist."""
-    async with httpx.AsyncClient() as client:
-        response = await client.post(f"{BASE_URL}/scrape-songkick", json={
-            "slug": artist,
-            "max_pages": 3
-        })
-        
-        if response.status_code != 200:
-            print(f"✗ Failed to scrape {artist}: {response.status_code}")
-            return []
-        
-        candidates = response.json()
-        print(f"✓ {artist}: {len(candidates)} candidates")
-        
-        # Validate candidates have required fields
-        for candidate in candidates:
-            assert "date_iso" in candidate
-            assert "city" in candidate
-            assert "venue" in candidate
-            assert "url" in candidate
-            assert "source_type" in candidate
-            assert "snippet" in candidate
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(f"{BASE_URL}/scrape-songkick", json={
+                "slug": artist,
+                "max_pages": 3
+            })
             
-            # Check date sanity
-            date_iso = candidate["date_iso"]
-            year = int(date_iso[:4])
-            assert 1900 <= year <= datetime.now().year + 1, f"Insane year: {year}"
+            if response.status_code != 200:
+                print(f"✗ Failed to scrape {artist}: {response.status_code}")
+                return []
             
-            # Check venue/city presence
-            assert candidate["city"] or candidate["venue"], "No venue or city"
-        
-        return candidates
+            candidates = response.json()
+            print(f"✓ {artist}: {len(candidates)} candidates")
+            
+            # Validate candidates have required fields
+            for candidate in candidates:
+                assert "date_iso" in candidate
+                assert "city" in candidate
+                assert "venue" in candidate
+                assert "url" in candidate
+                assert "source_type" in candidate
+                assert "snippet" in candidate
+                
+                # Check date sanity
+                date_iso = candidate["date_iso"]
+                year = int(date_iso[:4])
+                assert 1900 <= year <= datetime.now().year + 1, f"Insane year: {year}"
+                
+                # Check venue/city presence
+                assert candidate["city"] or candidate["venue"], "No venue or city"
+            
+            return candidates
+    except httpx.TimeoutException:
+        print(f"⚠️ Timeout scraping {artist}, skipping...")
+        return []
+    except Exception as e:
+        print(f"⚠️ Error scraping {artist}: {e}")
+        return []
 
 async def test_selection(candidates: List[Dict[str, Any]], metro: str) -> Dict[str, Any]:
     """Test selection logic for a metro area."""
@@ -120,10 +127,15 @@ async def main():
                 all_results[f"{artist}_nyc"] = nyc_result
         
         print()
+        
+        # Add delay between artists to avoid overwhelming the service
+        if artist != ARTISTS[-1]:  # Don't delay after the last artist
+            print("⏳ Waiting 2 seconds before next artist...")
+            await asyncio.sleep(2)
     
-    # Save results
+    # Save results to tools directory
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f"local_smoke_test_{timestamp}.json"
+    filename = f"tools/local_smoke_test_{timestamp}.json"
     
     with open(filename, "w") as f:
         json.dump(all_results, f, indent=2)

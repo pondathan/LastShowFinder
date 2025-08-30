@@ -1,0 +1,393 @@
+{
+  "5658139-crooked-colours_sf": {
+    "metro": "SF",
+    "date_iso": "2023-10-06",
+    "venue": "",
+    "city": "San Francisco, CA, US",
+    "evidence": [
+      {
+        "url": "https://www.songkick.com/artists/5658139-crooked-colours/gigography?page=1",
+        "snippet": "Crooked Colours Solaura Festival 2023 San Francisco, CA, US I was there"
+      }
+    ],
+    "alternates": [
+      {
+        "url": "https://www.songkick.com/artists/5658139-crooked-colours/gigography?page=2",
+        "snippet": "Crooked Colours Outside Lands Music & Arts Festival 2021 Golden Gate Park , San Francisco, CA, US 1000 John F. Kennedy Dr. I was there"
+      }
+    ],
+    "notes": {
+      "canceled": false,
+      "multi_night_series": false
+    },
+    "audit": {
+      "decision_path": [
+        "latest_date"
+      ],
+      "candidates_considered": 82
+    }
+  },
+  "5658139-crooked-colours_nyc": {
+    "metro": "NYC",
+    "date_iso": "2021-08-29",
+    "venue": "Brooklyn Mirage, Avant Gardner",
+    "city": "Brooklyn, NY, US 140 Stewart Ave.",
+    "evidence": [
+      {
+        "url": "https://www.songkick.com/artists/5658139-crooked-colours/gigography?page=2",
+        "snippet": "Crooked Colours with Big Wild and Jai Wolf Brooklyn Mirage, Avant Gardner , Brooklyn, NY, US 140 Stewart Ave. I was there"
+      }
+    ],
+    "alternates": [],
+    "notes": {
+      "canceled": false,
+      "multi_night_series": false
+    },
+    "audit": {
+      "decision_path": [
+        "latest_date"
+      ],
+      "candidates_considered": 82
+    }
+  },
+  "7958783-larry-june_sf": {
+    "status": "unknown",
+    "alternates": [
+      {
+        "url": "https://www.songkick.com/artists/7958783-larry-june/gigography?page=1",
+        "snippet": "Thursday 28 August 2025 Larry June Nova SD , San Diego, CA, US 454 Sixth Ave. I was there Saturday 12 July 2025 Larry June Time Nightclub , Costa Mesa, CA, US 1875 Newport Blvd #B245, I was there Sund"
+      },
+      {
+        "url": "https://www.songkick.com/artists/7958783-larry-june/gigography?page=1",
+        "snippet": "Larry June Rolling Loud California 2024 Hollywood Park Grounds , Inglewood, CA, US 1001 Stadium Drive I was there"
+      },
+      {
+        "url": "https://www.songkick.com/artists/7958783-larry-june/gigography?page=1",
+        "snippet": "Thursday 28 August 2025 Larry June Nova SD , San Diego, CA, US 454 Sixth Ave. I was there Saturday 12 July 2025 Larry June Time Nightclub , Costa Mesa, CA, US 1875 Newport Blvd #B245, I was there Sund"
+      }
+    ],
+    "audit": {
+      "decision_path": [
+        "no_valid_dates"
+      ],
+      "candidates_considered": 19
+    }
+  },
+  "7958783-larry-june_nyc": {
+    "status": "unknown",
+    "alternates": [
+      {
+        "url": "https://www.songkick.com/artists/7958783-larry-june/gigography?page=1",
+        "snippet": "Thursday 28 August 2025 Larry June Nova SD , San Diego, CA, US 454 Sixth Ave. I was there Saturday 12 July 2025 Larry June Time Nightclub , Costa Mesa, CA, US 1875 Newport Blvd #B245, I was there Sund"
+      },
+      {
+        "url": "https://www.songkick.com/artists/7958783-larry-june/gigography?page=1",
+        "snippet": "Larry June Rolling Loud California 2024 Hollywood Park Grounds , Inglewood, CA, US 1001 Stadium Drive I was there"
+      },
+      {
+        "url": "https://www.songkick.com/artists/7958783-larry-june/gigography?page=1",
+        "snippet": "Thursday 28 August 2025 Larry June Nova SD , San Diego, CA, US 454 Sixth Ave. I was there Saturday 12 July 2025 Larry June Time Nightclub , Costa Mesa, CA, US 1875 Newport Blvd #B245, I was there Sund"
+      }
+    ],
+    "audit": {
+      "decision_path": [
+        "no_valid_dates"
+      ],
+      "candidates_considered": 19
+    }
+  },
+  "2946631-jesse-daniel_sf": {
+    "metro": "SF",
+    "date_iso": "2025-08-24",
+    "venue": "The Independent",
+    "city": "San Francisco, CA, US 628 Divisadero Street",
+    "evidence": [
+      {
+        "url": "https://www.songkick.com/artists/2946631-jesse-daniel/gigography?page=1",
+        "snippet": "Thursday 28 August 2025 Jesse Daniel The Independent , San Francisco, CA, US 628 Divisadero Street I was there Wednesday 27 August 2025 Jesse Daniel Big Room, Sierra Nevada Brewing Co. , Chico, CA, US"
+      }
+    ],
+    "alternates": [
+      {
+        "url": "https://www.songkick.com/artists/2946631-jesse-daniel/gigography?page=1",
+        "snippet": "Thursday 28 August 2025 Jesse Daniel The Independent , San Francisco, CA, US 628 Divisadero Street I was there Wednesday 27 August 2025 Jesse Daniel Big Room, Sierra Nevada Brewing Co. , Chico, CA, US"
+      },
+      {
+        "url": "https://www.songkick.com/artists/2946631-jesse-daniel/gigography?page=1",
+        "snippet": "Thursday 28 August 2025 Jesse Daniel The Independent , San Francisco, CA, US 628 Divisadero Street I was there Wednesday 27 August 2025 Jesse Daniel Big Room, Sierra Nevada Brewing Co. , Chico, CA, US"
+      },
+      {
+        "url": "https://www.songkick.com/artists/2946631-jesse-daniel/gigography?page=1",
+        "snippet": "Thursday 28 August 2025 Jesse Daniel The Independent , San Francisco, CA, US 628 Divisadero Street I was there Wednesday 27 August 2025 Jesse Daniel Big Room, Sierra Nevada Brewing Co. , Chico, CA, US"
+      }
+    ],
+    "notes": {
+      "canceled": false,
+      "multi_night_series": false
+    },
+    "audit": {
+      "decision_path": [
+        "latest_date"
+      ],
+      "candidates_considered": 73
+    }
+  },
+  "2946631-jesse-daniel_nyc": {
+    "status": "unknown",
+    "alternates": [
+      {
+        "url": "https://www.songkick.com/artists/2946631-jesse-daniel/gigography?page=1",
+        "snippet": "Thursday 28 August 2025 Jesse Daniel The Independent , San Francisco, CA, US 628 Divisadero Street I was there Wednesday 27 August 2025 Jesse Daniel Big Room, Sierra Nevada Brewing Co. , Chico, CA, US"
+      },
+      {
+        "url": "https://www.songkick.com/artists/2946631-jesse-daniel/gigography?page=1",
+        "snippet": "Jesse Daniel Domino Room , Bend, OR, US 51 N.w. Greenwood Avenue I was there"
+      },
+      {
+        "url": "https://www.songkick.com/artists/2946631-jesse-daniel/gigography?page=1",
+        "snippet": "Thursday 28 August 2025 Jesse Daniel The Independent , San Francisco, CA, US 628 Divisadero Street I was there Wednesday 27 August 2025 Jesse Daniel Big Room, Sierra Nevada Brewing Co. , Chico, CA, US"
+      }
+    ],
+    "audit": {
+      "decision_path": [
+        "no_valid_dates"
+      ],
+      "candidates_considered": 73
+    }
+  },
+  "9152349-sinego_sf": {
+    "metro": "SF",
+    "date_iso": "2024-05-22",
+    "venue": "Buena Vista Aquatic Recreational Area",
+    "city": "Bakersfield, CA, US 13601 Ironbark Rd.",
+    "evidence": [
+      {
+        "url": "https://www.songkick.com/artists/9152349-sinego/gigography?page=1",
+        "snippet": "Outdoor Sinego Lightning In A Bottle 2024 Buena Vista Aquatic Recreational Area , Bakersfield, CA, US 13601 Ironbark Rd. I was there"
+      }
+    ],
+    "alternates": [],
+    "notes": {
+      "canceled": false,
+      "multi_night_series": false
+    },
+    "audit": {
+      "decision_path": [
+        "latest_date"
+      ],
+      "candidates_considered": 48
+    }
+  },
+  "9152349-sinego_nyc": {
+    "metro": "NYC",
+    "date_iso": "2024-09-21",
+    "venue": "Brooklyn Mirage, Avant Gardner",
+    "city": "Brooklyn, NY, US 140 Stewart Ave.",
+    "evidence": [
+      {
+        "url": "https://www.songkick.com/artists/9152349-sinego/gigography?page=1",
+        "snippet": "Sinego Higher Ground 2024 Brooklyn Mirage, Avant Gardner , Brooklyn, NY, US 140 Stewart Ave. I was there"
+      }
+    ],
+    "alternates": [
+      {
+        "url": "https://www.songkick.com/artists/9152349-sinego/gigography?page=2",
+        "snippet": "Sinego with Bag Raiders Schimanski , New York (NYC), NY, US 54 North 11th Street I was there"
+      }
+    ],
+    "notes": {
+      "canceled": false,
+      "multi_night_series": false
+    },
+    "audit": {
+      "decision_path": [
+        "latest_date"
+      ],
+      "candidates_considered": 48
+    }
+  },
+  "9224649-slenderbodies_sf": {
+    "metro": "SF",
+    "date_iso": "2024-11-01",
+    "venue": "The Independent SF",
+    "city": "San Francisco, CA, US 628 Divisadero Street",
+    "evidence": [
+      {
+        "url": "https://www.songkick.com/artists/9224649-slenderbodies/gigography?page=1",
+        "snippet": "slenderbodies The Independent SF , San Francisco, CA, US 628 Divisadero Street I was there"
+      }
+    ],
+    "alternates": [],
+    "notes": {
+      "canceled": false,
+      "multi_night_series": false
+    },
+    "audit": {
+      "decision_path": [
+        "latest_date"
+      ],
+      "candidates_considered": 59
+    }
+  },
+  "9224649-slenderbodies_nyc": {
+    "status": "unknown",
+    "alternates": [
+      {
+        "url": "https://www.songkick.com/artists/9224649-slenderbodies/gigography?page=1",
+        "snippet": "Friday 25 July 2025 slenderbodies The Hangar , South Lake Tahoe, CA, US 2401 Lake Tahoe Blvd. I was there Sunday 13 July 2025 slenderbodies The Rockaway Hotel , Rockaway Beach, NY, US 108-10 Rockaway "
+      },
+      {
+        "url": "https://www.songkick.com/artists/9224649-slenderbodies/gigography?page=1",
+        "snippet": "slenderbodies CRSSD Festival Spring 2025 Waterfront Park , San Diego, CA, US 1600 Pacific Hwy. I was there"
+      },
+      {
+        "url": "https://www.songkick.com/artists/9224649-slenderbodies/gigography?page=1",
+        "snippet": "Friday 25 July 2025 slenderbodies The Hangar , South Lake Tahoe, CA, US 2401 Lake Tahoe Blvd. I was there Sunday 13 July 2025 slenderbodies The Rockaway Hotel , Rockaway Beach, NY, US 108-10 Rockaway "
+      }
+    ],
+    "audit": {
+      "decision_path": [
+        "no_valid_dates"
+      ],
+      "candidates_considered": 59
+    }
+  },
+  "5557998-proxima-parada_sf": {
+    "status": "unknown",
+    "alternates": [
+      {
+        "url": "https://www.songkick.com/artists/5557998-proxima-parada/gigography?page=1",
+        "snippet": "Saturday 23 August 2025 Pr\u00f3xima Parada The Windjammer , Isle of Palms, SC, US 1008 Ocean Blvd I was there Saturday 16 August 2025 Pr\u00f3xima Parada The Basement East , Nashville, TN, US 917 Woodland Ave."
+      },
+      {
+        "url": "https://www.songkick.com/artists/5557998-proxima-parada/gigography?page=1",
+        "snippet": "Pr\u00f3xima Parada UMS - The Underground Music Showcase 2024 Underground Music Showcase , Denver, CO, US 21 S. Broadway I was there"
+      },
+      {
+        "url": "https://www.songkick.com/artists/5557998-proxima-parada/gigography?page=1",
+        "snippet": "Saturday 23 August 2025 Pr\u00f3xima Parada The Windjammer , Isle of Palms, SC, US 1008 Ocean Blvd I was there Saturday 16 August 2025 Pr\u00f3xima Parada The Basement East , Nashville, TN, US 917 Woodland Ave."
+      }
+    ],
+    "audit": {
+      "decision_path": [
+        "no_valid_dates"
+      ],
+      "candidates_considered": 37
+    }
+  },
+  "5557998-proxima-parada_nyc": {
+    "status": "unknown",
+    "alternates": [
+      {
+        "url": "https://www.songkick.com/artists/5557998-proxima-parada/gigography?page=1",
+        "snippet": "Saturday 23 August 2025 Pr\u00f3xima Parada The Windjammer , Isle of Palms, SC, US 1008 Ocean Blvd I was there Saturday 16 August 2025 Pr\u00f3xima Parada The Basement East , Nashville, TN, US 917 Woodland Ave."
+      },
+      {
+        "url": "https://www.songkick.com/artists/5557998-proxima-parada/gigography?page=1",
+        "snippet": "Pr\u00f3xima Parada UMS - The Underground Music Showcase 2024 Underground Music Showcase , Denver, CO, US 21 S. Broadway I was there"
+      },
+      {
+        "url": "https://www.songkick.com/artists/5557998-proxima-parada/gigography?page=1",
+        "snippet": "Saturday 23 August 2025 Pr\u00f3xima Parada The Windjammer , Isle of Palms, SC, US 1008 Ocean Blvd I was there Saturday 16 August 2025 Pr\u00f3xima Parada The Basement East , Nashville, TN, US 917 Woodland Ave."
+      }
+    ],
+    "audit": {
+      "decision_path": [
+        "no_valid_dates"
+      ],
+      "candidates_considered": 37
+    }
+  },
+  "5157743-mo-lowda-and-the-humble_sf": {
+    "status": "unknown",
+    "alternates": [
+      {
+        "url": "https://www.songkick.com/artists/5157743-mo-lowda-and-the-humble/gigography?page=1",
+        "snippet": "Thursday 26 June 2025 Mo Lowda & the Humble The Gas Light , Lubbock, TX, US 5212 57th Street I was there Wednesday 25 June 2025 Mo Lowda & the Humble The Gaslight , Nantucket, MA, US 3 N Union Street "
+      },
+      {
+        "url": "https://www.songkick.com/artists/5157743-mo-lowda-and-the-humble/gigography?page=1",
+        "snippet": "Mo Lowda & the Humble The Green River Fest 2025 Greenfield, MA, US I was there"
+      },
+      {
+        "url": "https://www.songkick.com/artists/5157743-mo-lowda-and-the-humble/gigography?page=1",
+        "snippet": "Thursday 26 June 2025 Mo Lowda & the Humble The Gas Light , Lubbock, TX, US 5212 57th Street I was there Wednesday 25 June 2025 Mo Lowda & the Humble The Gaslight , Nantucket, MA, US 3 N Union Street "
+      }
+    ],
+    "audit": {
+      "decision_path": [
+        "no_valid_dates"
+      ],
+      "candidates_considered": 27
+    }
+  },
+  "5157743-mo-lowda-and-the-humble_nyc": {
+    "status": "unknown",
+    "alternates": [
+      {
+        "url": "https://www.songkick.com/artists/5157743-mo-lowda-and-the-humble/gigography?page=1",
+        "snippet": "Thursday 26 June 2025 Mo Lowda & the Humble The Gas Light , Lubbock, TX, US 5212 57th Street I was there Wednesday 25 June 2025 Mo Lowda & the Humble The Gaslight , Nantucket, MA, US 3 N Union Street "
+      },
+      {
+        "url": "https://www.songkick.com/artists/5157743-mo-lowda-and-the-humble/gigography?page=1",
+        "snippet": "Mo Lowda & the Humble The Green River Fest 2025 Greenfield, MA, US I was there"
+      },
+      {
+        "url": "https://www.songkick.com/artists/5157743-mo-lowda-and-the-humble/gigography?page=1",
+        "snippet": "Thursday 26 June 2025 Mo Lowda & the Humble The Gas Light , Lubbock, TX, US 5212 57th Street I was there Wednesday 25 June 2025 Mo Lowda & the Humble The Gaslight , Nantucket, MA, US 3 N Union Street "
+      }
+    ],
+    "audit": {
+      "decision_path": [
+        "no_valid_dates"
+      ],
+      "candidates_considered": 27
+    }
+  },
+  "10158640-saint-luna_sf": {
+    "status": "unknown",
+    "alternates": [
+      {
+        "url": "https://www.songkick.com/artists/10158640-saint-luna/gigography?page=1",
+        "snippet": "Friday 16 May 2025 \u2013 Sunday 18 May 2025 Saint Luna Wonderfront Music Festival 2025 Embarcadero Park , San Diego, CA, US I was there Friday 21 March 2025 Saint Luna Soma Sidestage , San Diego, CA, US 3"
+      },
+      {
+        "url": "https://www.songkick.com/artists/10158640-saint-luna/gigography?page=1",
+        "snippet": "Friday 16 May 2025 \u2013 Sunday 18 May 2025 Saint Luna Wonderfront Music Festival 2025 Embarcadero Park , San Diego, CA, US I was there Friday 21 March 2025 Saint Luna Soma Sidestage , San Diego, CA, US 3"
+      },
+      {
+        "url": "https://www.songkick.com/artists/10158640-saint-luna/gigography?page=1",
+        "snippet": "Saint Luna Peachy San Diego 2025 Soma , San Diego, CA, US 3350 Sports Arena Boulevard I was there"
+      }
+    ],
+    "audit": {
+      "decision_path": [
+        "no_valid_dates"
+      ],
+      "candidates_considered": 13
+    }
+  },
+  "10158640-saint-luna_nyc": {
+    "status": "unknown",
+    "alternates": [
+      {
+        "url": "https://www.songkick.com/artists/10158640-saint-luna/gigography?page=1",
+        "snippet": "Friday 16 May 2025 \u2013 Sunday 18 May 2025 Saint Luna Wonderfront Music Festival 2025 Embarcadero Park , San Diego, CA, US I was there Friday 21 March 2025 Saint Luna Soma Sidestage , San Diego, CA, US 3"
+      },
+      {
+        "url": "https://www.songkick.com/artists/10158640-saint-luna/gigography?page=1",
+        "snippet": "Friday 16 May 2025 \u2013 Sunday 18 May 2025 Saint Luna Wonderfront Music Festival 2025 Embarcadero Park , San Diego, CA, US I was there Friday 21 March 2025 Saint Luna Soma Sidestage , San Diego, CA, US 3"
+      },
+      {
+        "url": "https://www.songkick.com/artists/10158640-saint-luna/gigography?page=1",
+        "snippet": "Saint Luna Peachy San Diego 2025 Soma , San Diego, CA, US 3350 Sports Arena Boulevard I was there"
+      }
+    ],
+    "audit": {
+      "decision_path": [
+        "no_valid_dates"
+      ],
+      "candidates_considered": 13
+    }
+  }
+}

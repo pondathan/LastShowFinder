@@ -296,7 +296,10 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Run the service
+# Run the service (recommended)
+./scripts/start_local.sh
+
+# Or manually
 uvicorn worker:app --host 0.0.0.0 --port 8000 --reload
 ```
 
@@ -318,13 +321,17 @@ docker run -p 8000:8000 last-show-oracle
 ## 📚 Documentation
 
 ### Setup & Development
-- **[Virtual Environment Setup](venv-setup-guide.md)** - Complete setup guide
-- **[Quick Troubleshooting](QUICK_TROUBLESHOOTING.md)** - Common issues & fixes
-- **[Hardening Features](HARDENING_FEATURES.md)** - Security & reliability features
-- **[Deployment Checklist](DEPLOYMENT_CHECKLIST.md)** - Pre-deployment verification
+- **[Virtual Environment Setup](docs/guides/venv-setup-guide.md)** - Complete setup guide
+- **[Quick Troubleshooting](docs/guides/QUICK_TROUBLESHOOTING.md)** - Common issues & fixes
+- **[Hardening Features](docs/guides/HARDENING_FEATURES.md)** - Security & reliability features
+- **[Venue Whitelist Info](docs/guides/venuse_whitelist_path.md)** - Configuration details
 
-### Testing & CI
+### Deployment
+- **[Deployment Checklist](docs/deployment/DEPLOYMENT_CHECKLIST.md)** - Pre-deployment verification
+
+### Testing & Tools
 - **[Smoke Test Results](smoke_test/)** - Previous test results and baselines
+- **[Local Testing Tools](tools/)** - Smoke test scripts and candidate data
 - **[Test Suite](tests/)** - Unit tests and fixtures
 - **[GitHub Actions](.github/workflows/)** - CI/CD pipeline
 
@@ -332,6 +339,11 @@ docker run -p 8000:8000 last-show-oracle
 - **[Environment Variables](.env.example)** - Configuration template
 - **[Venue Whitelists](config/venues.json)** - Metro-specific venue lists
 - **[Artist Aliases](config/aliases.json)** - Name variations and mappings
+
+### Project Structure
+- `scripts/` - Startup and utility scripts
+- `tools/` - Testing tools and candidate data
+- `docs/` - Comprehensive documentation
 
 ## License
 
