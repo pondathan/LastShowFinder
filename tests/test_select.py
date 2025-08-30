@@ -1,7 +1,14 @@
 """Test selection logic and deterministic rules."""
 
 import pytest
+import sys
+from pathlib import Path
 from datetime import datetime, date
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
 from worker import (
     select_latest_candidates, 
     is_valid_candidate, 

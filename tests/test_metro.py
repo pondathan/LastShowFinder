@@ -1,9 +1,16 @@
 """Test metro filtering functionality."""
 
 import pytest
+import sys
+from pathlib import Path
 import json
 import tempfile
 import os
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
 from worker import belongs_to_metro, METRO_TOKENS
 
 

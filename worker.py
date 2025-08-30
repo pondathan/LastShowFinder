@@ -18,6 +18,7 @@ from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
+from contextlib import asynccontextmanager
 
 from setting import get_settings
 
@@ -25,11 +26,32 @@ from setting import get_settings
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup/shutdown events."""
+    # Startup
+    logger.info("Last-Show Oracle starting up...")
+    
+    # Load venue whitelists to validate config
+    try:
+        with open(settings.VENUE_WHITELISTS_PATH) as f:
+            whitelists = json.load(f)
+            logger.info(f"Loaded venue whitelists: {list(whitelists.keys())}")
+    except Exception as e:
+        logger.error(f"Failed to load venue whitelists: {e}")
+    
+    yield
+    
+    # Shutdown
+    logger.info("Last-Show Oracle shutting down...")
+    await http_client.aclose()
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Last-Show Oracle",
-    description="Microservice for parsing concert events and selecting latest shows in SF/NYC",
-    version="1.0.0"
+    description="Find the last show an artist played in a specific metro area",
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Load settings
@@ -201,7 +223,7 @@ def nearest_row(time_tag) -> any:
         p = p.parent
     return time_tag.parent or time_tag
 
-def extract_row_candidate(time_tag, page_url: str, artist_name: str | None = None) -> dict | None:
+def extract_row_candidate(time_tag, page_url: str, artist_name: Optional[str] = None) -> Optional[dict]:
     """Extract a single candidate from a Songkick row, row-scoped only."""
     date_iso = time_tag.get("datetime")
     if not date_iso:
@@ -271,6 +293,24 @@ def parse_date(date_text: str) -> Optional[str]:
         # Try parsing with dateutil
         parsed_date = date_parser.parse(clean_text, fuzzy=True)
         if parsed_date:
+            # Validate that we have a complete date (not just year)
+            # Check if the original text contains month/day indicators
+            has_month = re.search(r'(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december|\d{1,2}/\d{1,2}|\d{1,2}-\d{1,2})', clean_text, re.IGNORECASE)
+            has_day = re.search(r'(\d{1,2}(?:st|nd|rd|th)?)', clean_text)
+            has_year = re.search(r'\b\d{4}\b', clean_text)
+            
+            # If we only have a year (4 digits), reject it
+            if re.match(r'^\d{4}$', clean_text.strip()):
+                return None
+            
+            # If we have a year but no month/day indicators, reject it
+            if re.match(r'^\d{4}$', clean_text.strip()) or (not has_month and not has_day):
+                return None
+            
+            # If we have month/day but no year, reject it
+            if (has_month or has_day) and not has_year:
+                return None
+                
             return parsed_date.strftime("%Y-%m-%d")
     except:
         pass
@@ -583,32 +623,33 @@ def select_latest_candidates(candidates: List[Candidate], metro: str) -> tuple[O
     latest_candidates = [c for c in valid_candidates if c.date_iso == latest_date]
     
     if len(latest_candidates) == 1:
+        # Check if we have other candidates within ±3 days for near-tie consideration
+        near_tie_candidates = [latest_candidates[0]]  # Start with the latest
+        for candidate in valid_candidates[1:]:  # Check other candidates
+            try:
+                candidate_date = datetime.strptime(candidate.date_iso, "%Y-%m-%d").date()
+                latest_date_obj = datetime.strptime(latest_date, "%Y-%m-%d").date()
+                days_diff = abs((candidate_date - latest_date_obj).days)
+                
+                if days_diff <= 3:  # Within 3 days
+                    near_tie_candidates.append(candidate)
+            except:
+                continue
+        
+        # If we have multiple candidates in the near-tie window, apply precedence
+        if len(near_tie_candidates) > 1:
+            near_tie_candidates.sort(key=lambda x: SOURCE_PRECEDENCE.get(x.source_type, 0), reverse=True)
+            winner = near_tie_candidates[0]
+            alternates = [c for c in valid_candidates[:4] if c != winner]
+            return winner, alternates, ["latest_date", "near_tie_precedence"]
+        
+        # Single candidate at latest date
         return latest_candidates[0], valid_candidates[1:4], ["latest_date"]
     
     # Multiple candidates at latest date - apply precedence
     latest_candidates.sort(key=lambda x: SOURCE_PRECEDENCE.get(x.source_type, 0), reverse=True)
     
-    # Check for near-tie window (±3 days)
-    near_tie_candidates = []
-    for candidate in valid_candidates:
-        try:
-            candidate_date = datetime.strptime(candidate.date_iso, "%Y-%m-%d").date()
-            latest_date_obj = datetime.strptime(latest_date, "%Y-%m-%d").date()
-            days_diff = abs((candidate_date - latest_date_obj).days)
-            
-            if days_diff <= 3:
-                near_tie_candidates.append(candidate)
-        except:
-            continue
-    
-    # Prefer higher precedence within near-tie window
-    if near_tie_candidates:
-        near_tie_candidates.sort(key=lambda x: SOURCE_PRECEDENCE.get(x.source_type, 0), reverse=True)
-        winner = near_tie_candidates[0]
-        alternates = [c for c in valid_candidates[:4] if c != winner]
-        return winner, alternates, ["latest_date", "near_tie_precedence"]
-    
-    # Final tie-breaker: venue in snippet
+    # Final tie-breaker: venue in snippet (for same-date candidates)
     for candidate in latest_candidates:
         if candidate.venue and candidate.venue.lower() in candidate.snippet.lower():
             alternates = [c for c in valid_candidates[:4] if c != candidate]
@@ -703,17 +744,6 @@ async def scrape_songkick(request: SongkickRequest, _: bool = Depends(verify_api
                 
                 # Fallback: only if no time tags found, try minimal text parsing (demoted)
                 if not time_tags:
-                    # Look for elements with dates, but be more selective to avoid street addresses
-                    date_elements = []
-                    
-                    # Look for time elements with datetime attributes (most reliable)
-                    time_elements = soup.find_all('time', attrs={'datetime': True})
-                    date_elements.extend(time_elements)
-                    
-                    # Look for elements with date-like classes or IDs
-                    date_class_elements = soup.find_all(class_=re.compile(r'date|time|event|gig'))
-                    date_elements.extend(date_class_elements[:10])
-                    
                     # Look for elements with dates, but be more selective to avoid street addresses
                     date_elements = []
                     
@@ -1082,25 +1112,6 @@ async def health_check():
 async def ready_check():
     """Readiness check endpoint for deployment."""
     return {"status": "ready", "timestamp": datetime.now().isoformat()}
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize the service on startup."""
-    logger.info("Last-Show Oracle starting up...")
-    
-    # Load venue whitelists to validate config
-    try:
-        with open(settings.VENUE_WHITELISTS_PATH) as f:
-            whitelists = json.load(f)
-            logger.info(f"Loaded venue whitelists: {list(whitelists.keys())}")
-    except Exception as e:
-        logger.error(f"Failed to load venue whitelists: {e}")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on shutdown."""
-    logger.info("Last-Show Oracle shutting down...")
-    await http_client.aclose()
 
 if __name__ == "__main__":
     import uvicorn
