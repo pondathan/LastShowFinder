@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     # HTTP client config
     HTTP_TIMEOUT_SECONDS: int = 10
     HTTP_MAX_RETRIES: int = 1
-    HTTP_MAX_HOST_CONCURRENCY: int = 2
+    HTTP_MAX_PER_HOST: int = 2      # Per-host concurrency cap
 
     # Cache
     CACHE_TTL_DAYS: int = 7
@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     # Config files
     VENUE_WHITELISTS_PATH: str = "config/venues.json"
     ALIASES_PATH: str = "config/aliases.json"
+
+    # API Key middleware (optional)
+    API_KEY: Optional[str] = None   # X-API-Key header for protected endpoints
 
     # External APIs (optional)
     PPLX_API_KEY: Optional[str] = None

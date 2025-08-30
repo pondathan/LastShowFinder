@@ -27,6 +27,20 @@ pip install -r requirements.txt
 uvicorn worker:app --host 0.0.0.0 --port 8000 --workers 2
 ```
 
+### 🚨 Having Issues?
+
+**Python 3.13+ compatibility problems?** See [Quick Troubleshooting](QUICK_TROUBLESHOOTING.md) or [Full Setup Guide](venv-setup-guide.md)
+
+**Common quick fixes:**
+```bash
+# For pydantic build failures
+pip install --upgrade pydantic pydantic-settings
+
+# For import errors
+which python  # Should show .venv/bin/python
+pip install -r requirements.txt
+```
+
 ### Docker
 
 ```bash
@@ -300,6 +314,24 @@ docker run -p 8000:8000 last-show-oracle
 - **Artist aliases:** Add variants to `config/aliases.json`
 - **Parser updates:** Capture HTML fixtures when parsing fails
 - **Regression testing:** Weekly batch runs on 20 artists
+
+## 📚 Documentation
+
+### Setup & Development
+- **[Virtual Environment Setup](venv-setup-guide.md)** - Complete setup guide
+- **[Quick Troubleshooting](QUICK_TROUBLESHOOTING.md)** - Common issues & fixes
+- **[Hardening Features](HARDENING_FEATURES.md)** - Security & reliability features
+- **[Deployment Checklist](DEPLOYMENT_CHECKLIST.md)** - Pre-deployment verification
+
+### Testing & CI
+- **[Smoke Test Results](smoke_test/)** - Previous test results and baselines
+- **[Test Suite](tests/)** - Unit tests and fixtures
+- **[GitHub Actions](.github/workflows/)** - CI/CD pipeline
+
+### Configuration
+- **[Environment Variables](.env.example)** - Configuration template
+- **[Venue Whitelists](config/venues.json)** - Metro-specific venue lists
+- **[Artist Aliases](config/aliases.json)** - Name variations and mappings
 
 ## License
 

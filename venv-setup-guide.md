@@ -10,6 +10,16 @@ A virtual environment is an isolated Python environment that:
 - Makes it easy to manage package versions
 - Can be easily recreated on other machines
 
+## ⚠️ Important: Python Version Compatibility
+
+**Recommended Python versions**: 3.11 or 3.12
+**Known issues with Python 3.13+**: Some packages may have compatibility issues
+
+If you encounter package installation problems:
+1. **Use Python 3.11 or 3.12** (most stable)
+2. **Or upgrade packages**: `pip install --upgrade pydantic pydantic-settings`
+3. **Check requirements.txt** for detailed compatibility notes
+
 ## Quick Setup (Recommended)
 
 ### 1. Create Virtual Environment
@@ -284,6 +294,89 @@ Once running locally, your Make.com scenario can use:
   - `http://localhost:8000/wayback-parse`
   - `http://localhost:8000/select-latest`
   - `http://localhost:8000/health`
+
+## 🚨 Troubleshooting Common Issues
+
+### Package Installation Problems
+
+#### Pydantic Build Failures
+```bash
+# Problem: pydantic-core build errors on Python 3.13+
+# Solution 1: Use Python 3.11 or 3.12 (recommended)
+python3.11 -m venv .venv
+
+# Solution 2: Upgrade packages
+pip install --upgrade pydantic pydantic-settings
+
+# Solution 3: Clear cache and reinstall
+pip cache purge
+pip install --no-cache-dir -r requirements.txt
+```
+
+#### Version Conflicts
+```bash
+# Problem: Package version conflicts
+# Solution: Use exact versions or upgrade all
+pip install --upgrade pip setuptools wheel
+pip install -r requirements.txt
+```
+
+### Import Errors
+
+#### Module Not Found
+```bash
+# Problem: Can't import worker or other modules
+# Solution: Check virtual environment activation
+which python  # Should show .venv/bin/python
+echo $VIRTUAL_ENV  # Should show path to .venv
+
+# Reinstall if needed
+pip install -r requirements.txt
+```
+
+#### Settings Import Issues
+```bash
+# Problem: Settings validation errors
+# Solution: Check for conflicting environment variables
+env | grep HTTP  # Look for old HTTP_MAX_HOST_CONCURRENCY
+unset HTTP_MAX_HOST_CONCURRENCY  # Remove if found
+```
+
+### Service Startup Issues
+
+#### Port Already in Use
+```bash
+# Problem: Port 8000 is occupied
+# Solution: Find and kill process, or use different port
+lsof -i :8000
+kill -9 <PID>
+# Or use different port
+uvicorn worker:app --host 0.0.0.0 --port 8001 --reload
+```
+
+#### Permission Denied
+```bash
+# Problem: Can't bind to port
+# Solution: Use higher port number or check permissions
+uvicorn worker:app --host 0.0.0.0 --port 8080 --reload
+```
+
+### Performance Issues
+
+#### Slow Package Installation
+```bash
+# Problem: pip is slow
+# Solution: Use faster mirrors or cache
+pip install -i https://pypi.org/simple/ -r requirements.txt
+pip install --cache-dir ~/.pip-cache -r requirements.txt
+```
+
+#### Memory Issues
+```bash
+# Problem: Out of memory during build
+# Solution: Limit parallel builds
+pip install --no-cache-dir --no-build-isolation -r requirements.txt
+```
 
 ## Next Steps
 

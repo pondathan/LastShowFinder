@@ -1,7 +1,21 @@
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-httpx==0.25.2
-beautifulsoup4==4.12.2
-python-dateutil==2.8.2
-pydantic-settings==2.1.0
-pydantic==2.5.0
+# Last-Show Oracle Requirements
+# 
+# IMPORTANT: Python Version Compatibility
+# - Python 3.11+ recommended (3.13+ may have compatibility issues with some packages)
+# - If using Python 3.13+, you may need to use the latest package versions
+# - For production, consider using Python 3.11 or 3.12 for maximum stability
+#
+# Quick fix for Python 3.13+ compatibility issues:
+# pip install --upgrade pydantic pydantic-settings
+
+fastapi>=0.104.1
+uvicorn[standard]>=0.24.0
+httpx>=0.25.2
+beautifulsoup4>=4.12.2
+python-dateutil>=2.8.2
+pydantic-settings>=2.1.0
+pydantic>=2.5.0
+
+# Testing dependencies
+pytest>=7.4.3
+pytest-asyncio>=0.21.1

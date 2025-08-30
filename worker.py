@@ -14,8 +14,9 @@ from urllib.parse import urlparse
 import httpx
 from bs4 import BeautifulSoup
 from dateutil import parser as date_parser
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 
 from setting import get_settings
@@ -33,6 +34,22 @@ app = FastAPI(
 
 # Load settings
 settings = get_settings()
+
+# API Key middleware
+security = HTTPBearer(auto_error=False)
+
+async def verify_api_key(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Verify API key if configured."""
+    if not settings.API_KEY:
+        return True  # No API key required
+    
+    if not credentials:
+        raise HTTPException(status_code=401, detail="API key required")
+    
+    if credentials.credentials != settings.API_KEY:
+        raise HTTPException(status_code=403, detail="Invalid API key")
+    
+    return True
 
 # Metro tokens for SF and NYC
 METRO_TOKENS = {
@@ -52,10 +69,13 @@ SOURCE_PRECEDENCE = {
     "press": 1
 }
 
-# HTTP client with timeouts and retries
+# HTTP client with timeouts, retries, and per-host concurrency limits
 http_client = httpx.AsyncClient(
-    timeout=settings.HTTP_TIMEOUT_SECONDS,
-    limits=httpx.Limits(max_keepalive_connections=settings.HTTP_MAX_HOST_CONCURRENCY)
+    timeout=httpx.Timeout(settings.HTTP_TIMEOUT_SECONDS),
+    limits=httpx.Limits(
+        max_connections=settings.HTTP_MAX_PER_HOST,
+        max_keepalive_connections=settings.HTTP_MAX_PER_HOST
+    )
 )
 
 # In-memory cache (simple dict for MVP)
@@ -280,6 +300,21 @@ def dedupe_candidates(candidates: List[Candidate]) -> List[Candidate]:
 async def parse_generic_internal(url: str, html_content: str) -> List[Candidate]:
     """Internal version of parse_generic without HTTP fallback to avoid recursion."""
     candidates = []
+
+async def http_get_with_retry(url: str, max_retries: int = 1) -> httpx.Response:
+    """HTTP GET with retry logic for 5xx errors."""
+    for attempt in range(max_retries + 1):
+        try:
+            response = await http_client.get(url)
+            if response.status_code < 500 or attempt == max_retries:
+                return response
+            logger.warning(f"5xx error on attempt {attempt + 1}, retrying...")
+        except Exception as e:
+            if attempt == max_retries:
+                raise e
+            logger.warning(f"HTTP error on attempt {attempt + 1}, retrying...")
+    
+    raise HTTPException(status_code=500, detail="Max retries exceeded")
     
     try:
         soup = BeautifulSoup(html_content, 'html.parser')
@@ -409,7 +444,7 @@ async def wayback_parse_internal(url: str, from_year: int = 2023, limit: int = 2
             "limit": str(limit)
         }
         
-        response = await http_client.get(cdx_url, params=params)
+        response = await http_get_with_retry(cdx_url, params=params, max_retries=settings.HTTP_MAX_RETRIES)
         response.raise_for_status()
         
         snapshot_data = response.json()
@@ -427,7 +462,7 @@ async def wayback_parse_internal(url: str, from_year: int = 2023, limit: int = 2
                     snapshot_url = f"http://web.archive.org/web/{timestamp}/{url}"
                     
                     # Fetch the snapshot
-                    snapshot_response = await http_client.get(snapshot_url)
+                    snapshot_response = await http_get_with_retry(snapshot_url, max_retries=settings.HTTP_MAX_RETRIES)
                     snapshot_response.raise_for_status()
                     
                     # Parse like generic parser but with internal call
@@ -586,7 +621,7 @@ def select_latest_candidates(candidates: List[Candidate], metro: str) -> tuple[O
 
 # API endpoints
 @app.post("/scrape-songkick", response_model=List[Candidate])
-async def scrape_songkick(request: SongkickRequest):
+async def scrape_songkick(request: SongkickRequest, _: bool = Depends(verify_api_key)):
     """Scrape Songkick gigography pages for an artist."""
     candidates = []
     
@@ -612,7 +647,7 @@ async def scrape_songkick(request: SongkickRequest):
             url = f"https://www.songkick.com/artists/{slug}/gigography?page={page}"
             
             try:
-                response = await http_client.get(url)
+                response = await http_get_with_retry(url, max_retries=settings.HTTP_MAX_RETRIES)
                 response.raise_for_status()
                 
                 soup = BeautifulSoup(response.text, 'html.parser')
@@ -753,7 +788,7 @@ async def scrape_songkick(request: SongkickRequest):
     return candidates
 
 @app.post("/parse-generic", response_model=List[Candidate])
-async def parse_generic(request: ParseRequest):
+async def parse_generic(request: ParseRequest, _: bool = Depends(verify_api_key)):
     """Parse arbitrary HTML/URLs into candidate events."""
     candidates = []
     
@@ -763,9 +798,9 @@ async def parse_generic(request: ParseRequest):
             source_url = request.url
             wayback_fallback = False
         else:
-            # Fetch the URL with auto-Wayback fallback
+            # Fetch the URL with auto-Wayback fallback and retry logic
             try:
-                response = await http_client.get(request.url)
+                response = await http_get_with_retry(request.url, max_retries=settings.HTTP_MAX_RETRIES)
                 response.raise_for_status()
                 html_content = response.text
                 source_url = request.url
@@ -895,7 +930,7 @@ async def parse_generic(request: ParseRequest):
         raise HTTPException(status_code=500, detail=f"Generic parsing failed: {str(e)}")
 
 @app.get("/wayback-parse", response_model=List[Candidate])
-async def wayback_parse(url: str, from_year: int = 2023, to_year: Optional[int] = None, limit: int = 2):
+async def wayback_parse(url: str, from_year: int = 2023, to_year: Optional[int] = None, limit: int = 2, _: bool = Depends(verify_api_key)):
     """Parse Internet Archive snapshots when live pages fail."""
     if not to_year:
         to_year = datetime.now().year
@@ -904,7 +939,7 @@ async def wayback_parse(url: str, from_year: int = 2023, to_year: Optional[int] 
     
     try:
         # CDX query to get snapshots
-        cdx_url = f"http://web.archive.org/cdx/search/cdx"
+        cdx_url = f"http://web.archive.org/wayback/cdx/search/cdx"
         params = {
             "url": url,
             "from": str(from_year),
@@ -913,7 +948,7 @@ async def wayback_parse(url: str, from_year: int = 2023, to_year: Optional[int] 
             "limit": str(limit)
         }
         
-        response = await http_client.get(cdx_url, params=params)
+        response = await http_get_with_retry(cdx_url, params=params, max_retries=settings.HTTP_MAX_RETRIES)
         response.raise_for_status()
         
         snapshot_data = response.json()
@@ -930,9 +965,8 @@ async def wayback_parse(url: str, from_year: int = 2023, to_year: Optional[int] 
                     snapshot_url = f"http://web.archive.org/web/{timestamp}/{url}"
                     
                     # Fetch the snapshot
-                    snapshot_response = await http_client.get(snapshot_url)
+                    snapshot_response = await http_get_with_retry(snapshot_url, max_retries=settings.HTTP_MAX_RETRIES)
                     snapshot_response.raise_for_status()
-                    
                     # Parse like generic parser
                     snapshot_candidates = await parse_generic(ParseRequest(
                         url=snapshot_url,
@@ -958,7 +992,7 @@ async def wayback_parse(url: str, from_year: int = 2023, to_year: Optional[int] 
         raise HTTPException(status_code=500, detail=f"Wayback parsing failed: {str(e)}")
 
 @app.post("/select-latest", response_model=Any)
-async def select_latest(request: SelectRequest):
+async def select_latest(request: SelectRequest, _: bool = Depends(verify_api_key)):
     """Apply deterministic rules to select the most recent show in SF/NYC."""
     if request.metro not in ["SF", "NYC"]:
         raise HTTPException(status_code=400, detail="Metro must be 'SF' or 'NYC'")
@@ -1043,6 +1077,11 @@ async def select_latest(request: SelectRequest):
 async def health_check():
     """Health check endpoint for monitoring."""
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+@app.get("/ready")
+async def ready_check():
+    """Readiness check endpoint for deployment."""
+    return {"status": "ready", "timestamp": datetime.now().isoformat()}
 
 @app.on_event("startup")
 async def startup_event():
