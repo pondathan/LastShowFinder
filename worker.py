@@ -841,9 +841,9 @@ async def scrape_songkick(request: SongkickRequest, _: bool = Depends(verify_api
                                     time_tag, url, request.artist
                                 )
                                 if candidate_data:
-                                    candidate_data[
-                                        "metro"
-                                    ] = None  # Old logic doesn't classify metro
+                                    candidate_data["metro"] = (
+                                        None  # Old logic doesn't classify metro
+                                    )
                                 else:
                                     continue
                         except Exception as e:
@@ -854,9 +854,9 @@ async def scrape_songkick(request: SongkickRequest, _: bool = Depends(verify_api
                                 time_tag, url, request.artist
                             )
                             if candidate_data:
-                                candidate_data[
-                                    "metro"
-                                ] = None  # Old logic doesn't classify metro
+                                candidate_data["metro"] = (
+                                    None  # Old logic doesn't classify metro
+                                )
                             else:
                                 continue
 
