@@ -38,11 +38,15 @@ async def lifespan(app: FastAPI):
         with open(settings.VENUE_WHITELISTS_PATH) as f:
             whitelists = json.load(f)
             logger.info(f"Loaded venue whitelists: {list(whitelists.keys())}")
-            
+
             # Precompute lowercase sets for case-insensitive comparison
             global SF_VENUE_WHITELIST_LOWER, NYC_VENUE_WHITELIST_LOWER
-            SF_VENUE_WHITELIST_LOWER = {venue.lower() for venue in whitelists.get("SF", [])}
-            NYC_VENUE_WHITELIST_LOWER = {venue.lower() for venue in whitelists.get("NYC", [])}
+            SF_VENUE_WHITELIST_LOWER = {
+                venue.lower() for venue in whitelists.get("SF", [])
+            }
+            NYC_VENUE_WHITELIST_LOWER = {
+                venue.lower() for venue in whitelists.get("NYC", [])
+            }
     except Exception as e:
         logger.error(f"Failed to load venue whitelists: {e}")
         # Initialize empty sets as fallback
@@ -821,22 +825,38 @@ async def scrape_songkick(request: SongkickRequest, _: bool = Depends(verify_api
                         # Extract candidate from this specific row only using improved classifier
                         try:
                             candidate_data = extract_songkick_row_candidate(
-                                time_tag, url, SF_VENUE_WHITELIST_LOWER, NYC_VENUE_WHITELIST_LOWER, logger
+                                time_tag,
+                                url,
+                                SF_VENUE_WHITELIST_LOWER,
+                                NYC_VENUE_WHITELIST_LOWER,
+                                logger,
                             )
-                            
+
                             # If new classifier fails or returns None, fall back to old logic
                             if not candidate_data:
-                                logger.debug("New classifier returned None, falling back to old logic")
-                                candidate_data = extract_row_candidate(time_tag, url, request.artist)
+                                logger.debug(
+                                    "New classifier returned None, falling back to old logic"
+                                )
+                                candidate_data = extract_row_candidate(
+                                    time_tag, url, request.artist
+                                )
                                 if candidate_data:
-                                    candidate_data["metro"] = None  # Old logic doesn't classify metro
+                                    candidate_data[
+                                        "metro"
+                                    ] = None  # Old logic doesn't classify metro
                                 else:
                                     continue
                         except Exception as e:
-                            logger.warning(f"New classifier failed, falling back to old logic: {e}")
-                            candidate_data = extract_row_candidate(time_tag, url, request.artist)
+                            logger.warning(
+                                f"New classifier failed, falling back to old logic: {e}"
+                            )
+                            candidate_data = extract_row_candidate(
+                                time_tag, url, request.artist
+                            )
                             if candidate_data:
-                                candidate_data["metro"] = None  # Old logic doesn't classify metro
+                                candidate_data[
+                                    "metro"
+                                ] = None  # Old logic doesn't classify metro
                             else:
                                 continue
 
@@ -868,8 +888,10 @@ async def scrape_songkick(request: SongkickRequest, _: bool = Depends(verify_api
                         # Build candidate
                         candidate = Candidate(
                             date_iso=candidate_data["date_iso"],
-                            city=candidate_data["city"] or "",  # Ensure city is never None
-                            venue=candidate_data["venue"] or "",  # Ensure venue is never None
+                            city=candidate_data["city"]
+                            or "",  # Ensure city is never None
+                            venue=candidate_data["venue"]
+                            or "",  # Ensure venue is never None
                             url=candidate_data["url"],
                             source_type=candidate_data["source_type"],
                             snippet=candidate_data["snippet"],

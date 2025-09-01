@@ -10,34 +10,40 @@ from bs4 import BeautifulSoup
 class TestSongkickRowClassification:
     """Test the Songkick row classification module."""
 
-    @pytest.mark.parametrize("txt,expect", [
-        ("Brooklyn, NY, US", ("NYC", "Brooklyn, NY")),
-        ("Manhattan, NY", ("NYC", "Manhattan, NY")),
-        ("New York, NY, USA", ("NYC", "New York, NY")),
-        ("Queens, NY", ("NYC", "Queens, NY")),
-        ("Albany, NY", (None, "Albany, NY")),   # not NYC
-        ("San Francisco, CA", ("SF", "San Francisco, CA")),
-        ("Oakland, CA", ("SF", "Oakland, CA")),
-        ("Palo Alto, CA", ("SF", "Palo Alto, CA")),
-        ("Los Angeles, CA", (None, "Los Angeles, CA")),  # not SF
-    ])
+    @pytest.mark.parametrize(
+        "txt,expect",
+        [
+            ("Brooklyn, NY, US", ("NYC", "Brooklyn, NY")),
+            ("Manhattan, NY", ("NYC", "Manhattan, NY")),
+            ("New York, NY, USA", ("NYC", "New York, NY")),
+            ("Queens, NY", ("NYC", "Queens, NY")),
+            ("Albany, NY", (None, "Albany, NY")),  # not NYC
+            ("San Francisco, CA", ("SF", "San Francisco, CA")),
+            ("Oakland, CA", ("SF", "Oakland, CA")),
+            ("Palo Alto, CA", ("SF", "Palo Alto, CA")),
+            ("Los Angeles, CA", (None, "Los Angeles, CA")),  # not SF
+        ],
+    )
     def test_city_state_parsing(self, txt, expect):
         """Test city/state parsing for metro classification."""
         result = classify_city_state_from_text(txt)
         assert result == expect
 
-    @pytest.mark.parametrize("txt,expect", [
-        ("Live in BKLYN — NY — US", "NYC"),
-        ("NYC show tonight", "NYC"),
-        ("Bay Area headline — San Francisco", "SF"),
-        ("Buffalo, NY", None),  # upstate NY, not NYC
-        ("Brooklyn tonight", "NYC"),
-        ("Manhattan show", "NYC"),
-        ("Oakland venue", "SF"),
-        ("Berkeley concert", "SF"),
-        ("San Jose gig", "SF"),
-        ("Albany, NY", None),  # upstate NY, not NYC
-    ])
+    @pytest.mark.parametrize(
+        "txt,expect",
+        [
+            ("Live in BKLYN — NY — US", "NYC"),
+            ("NYC show tonight", "NYC"),
+            ("Bay Area headline — San Francisco", "SF"),
+            ("Buffalo, NY", None),  # upstate NY, not NYC
+            ("Brooklyn tonight", "NYC"),
+            ("Manhattan show", "NYC"),
+            ("Oakland venue", "SF"),
+            ("Berkeley concert", "SF"),
+            ("San Jose gig", "SF"),
+            ("Albany, NY", None),  # upstate NY, not NYC
+        ],
+    )
     def test_token_fallback(self, txt, expect):
         """Test token fallback classification."""
         result = fallback_tokens_to_metro(txt)
@@ -52,17 +58,17 @@ class TestSongkickRowClassification:
             <a href="/venues/12345" class="venue">Music Hall of Williamsburg</a>
         </li>
         """
-        soup = BeautifulSoup(html, 'html.parser')
-        time_tag = soup.find('time')
-        
+        soup = BeautifulSoup(html, "html.parser")
+        time_tag = soup.find("time")
+
         result = extract_songkick_row_candidate(
-            time_tag, 
-            "https://example.com", 
+            time_tag,
+            "https://example.com",
             set(),  # empty SF whitelist
             {"music hall of williamsburg"},  # NYC whitelist
-            None  # no logger
+            None,  # no logger
         )
-        
+
         assert result is not None
         assert result["date_iso"] == "2024-03-15"
         assert result["metro"] == "NYC"
@@ -78,17 +84,17 @@ class TestSongkickRowClassification:
             <a href="/venues/67890" class="venue">Lark Hall</a>
         </li>
         """
-        soup = BeautifulSoup(html, 'html.parser')
-        time_tag = soup.find('time')
-        
+        soup = BeautifulSoup(html, "html.parser")
+        time_tag = soup.find("time")
+
         result = extract_songkick_row_candidate(
-            time_tag, 
-            "https://example.com", 
+            time_tag,
+            "https://example.com",
             set(),  # empty SF whitelist
             set(),  # empty NYC whitelist
-            None  # no logger
+            None,  # no logger
         )
-        
+
         assert result is not None
         assert result["date_iso"] == "2024-03-15"
         assert result["metro"] is None  # Albany is not NYC metro
@@ -104,17 +110,17 @@ class TestSongkickRowClassification:
             <a href="/venues/11111" class="venue">The Independent</a>
         </li>
         """
-        soup = BeautifulSoup(html, 'html.parser')
-        time_tag = soup.find('time')
-        
+        soup = BeautifulSoup(html, "html.parser")
+        time_tag = soup.find("time")
+
         result = extract_songkick_row_candidate(
-            time_tag, 
-            "https://example.com", 
+            time_tag,
+            "https://example.com",
             {"the independent"},  # SF whitelist
             set(),  # empty NYC whitelist
-            None  # no logger
+            None,  # no logger
         )
-        
+
         assert result is not None
         assert result["date_iso"] == "2024-03-15"
         assert result["metro"] == "SF"
@@ -130,17 +136,17 @@ class TestSongkickRowClassification:
             <a href="/venues/22222" class="venue">Brooklyn Steel</a>
         </li>
         """
-        soup = BeautifulSoup(html, 'html.parser')
-        time_tag = soup.find('time')
-        
+        soup = BeautifulSoup(html, "html.parser")
+        time_tag = soup.find("time")
+
         result = extract_songkick_row_candidate(
-            time_tag, 
-            "https://example.com", 
+            time_tag,
+            "https://example.com",
             set(),  # empty SF whitelist
             {"brooklyn steel"},  # NYC whitelist
-            None  # no logger
+            None,  # no logger
         )
-        
+
         assert result is not None
         assert result["date_iso"] == "2024-03-15"
         assert result["metro"] == "NYC"  # rescued by venue whitelist
