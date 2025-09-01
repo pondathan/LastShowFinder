@@ -822,7 +822,8 @@ async def scrape_songkick(request: SongkickRequest, _: bool = Depends(verify_api
 
                 for time_tag in time_tags:
                     try:
-                        # Extract candidate from this specific row only using improved classifier
+                        # Extract candidate from this specific row only using improved
+                        # classifier
                         try:
                             candidate_data = extract_songkick_row_candidate(
                                 time_tag,
@@ -832,10 +833,12 @@ async def scrape_songkick(request: SongkickRequest, _: bool = Depends(verify_api
                                 logger,
                             )
 
-                            # If new classifier fails or returns None, fall back to old logic
+                            # If new classifier fails or returns None, fall back to old
+                            # logic
                             if not candidate_data:
                                 logger.debug(
-                                    "New classifier returned None, falling back to old logic"
+                                    "New classifier returned None, falling back to old "
+                                    "logic"
                                 )
                                 candidate_data = extract_row_candidate(
                                     time_tag, url, request.artist
@@ -1004,7 +1007,8 @@ async def scrape_songkick(request: SongkickRequest, _: bool = Depends(verify_api
                                         snippet=text[:500],
                                         canceled=False,
                                         source_host=urlparse(url).netloc,
-                                        metro=None,  # Fallback parsing doesn't classify metro
+                                        metro=None,  # Fallback parsing doesn't classify
+                                        # metro
                                     )
                                     candidates.append(candidate)
                         except Exception as e:
@@ -1054,7 +1058,8 @@ async def parse_generic(request: ParseRequest, _: bool = Depends(verify_api_key)
                     or e.response.status_code >= 500
                 ):
                     logger.info(
-                        f"Live fetch failed with {e.response.status_code}, trying Wayback fallback"  # noqa: E501
+                        f"Live fetch failed with {e.response.status_code}, "
+                        f"trying Wayback fallback"
                     )
                     # Try Wayback fallback
                     wayback_candidates = await wayback_parse_internal(request.url)
