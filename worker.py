@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 from contextlib import asynccontextmanager
 
 from setting import get_settings
+from songkick_row_classification import extract_songkick_row_candidate
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -37,8 +38,16 @@ async def lifespan(app: FastAPI):
         with open(settings.VENUE_WHITELISTS_PATH) as f:
             whitelists = json.load(f)
             logger.info(f"Loaded venue whitelists: {list(whitelists.keys())}")
+            
+            # Precompute lowercase sets for case-insensitive comparison
+            global SF_VENUE_WHITELIST_LOWER, NYC_VENUE_WHITELIST_LOWER
+            SF_VENUE_WHITELIST_LOWER = {venue.lower() for venue in whitelists.get("SF", [])}
+            NYC_VENUE_WHITELIST_LOWER = {venue.lower() for venue in whitelists.get("NYC", [])}
     except Exception as e:
         logger.error(f"Failed to load venue whitelists: {e}")
+        # Initialize empty sets as fallback
+        SF_VENUE_WHITELIST_LOWER = set()
+        NYC_VENUE_WHITELIST_LOWER = set()
 
     yield
 
@@ -57,6 +66,10 @@ app = FastAPI(
 
 # Load settings
 settings = get_settings()
+
+# Global venue whitelist sets (initialized in lifespan)
+SF_VENUE_WHITELIST_LOWER = set()
+NYC_VENUE_WHITELIST_LOWER = set()
 
 # API Key middleware
 security = HTTPBearer(auto_error=False)
@@ -134,6 +147,7 @@ class Candidate(BaseModel):
     snippet: str
     canceled: bool = False
     source_host: Optional[str] = None  # NEW: For debugging and deduplication
+    metro: Optional[str] = None  # NEW: Metro classification (NYC, SF, etc.)
 
 
 class SongkickRequest(BaseModel):
@@ -197,13 +211,15 @@ class UnknownResponse(BaseModel):
 def validate_date_sanity(date_iso: str) -> bool:
     """Enhanced date validation with stricter bounds and format checking."""
     try:
-        # Must be valid ISO format
-        if not re.match(r"^\d{4}-\d{2}-\d{2}$", date_iso):
+        # Handle ISO 8601 dates with timezone info (e.g., 2023-10-27T20:00:00-0400)
+        # Extract just the date part (YYYY-MM-DD)
+        date_match = re.match(r"^(\d{4})-(\d{2})-(\d{2})", date_iso)
+        if not date_match:
             return False
 
-        year = int(date_iso[:4])
-        month = int(date_iso[5:7])
-        day = int(date_iso[8:10])
+        year = int(date_match.group(1))
+        month = int(date_match.group(2))
+        day = int(date_match.group(3))
 
         current_year = datetime.now().year
 
@@ -802,12 +818,27 @@ async def scrape_songkick(request: SongkickRequest, _: bool = Depends(verify_api
 
                 for time_tag in time_tags:
                     try:
-                        # Extract candidate from this specific row only
-                        candidate_data = extract_row_candidate(
-                            time_tag, url, request.artist
-                        )
-                        if not candidate_data:
-                            continue
+                        # Extract candidate from this specific row only using improved classifier
+                        try:
+                            candidate_data = extract_songkick_row_candidate(
+                                time_tag, url, SF_VENUE_WHITELIST_LOWER, NYC_VENUE_WHITELIST_LOWER, logger
+                            )
+                            
+                            # If new classifier fails or returns None, fall back to old logic
+                            if not candidate_data:
+                                logger.debug("New classifier returned None, falling back to old logic")
+                                candidate_data = extract_row_candidate(time_tag, url, request.artist)
+                                if candidate_data:
+                                    candidate_data["metro"] = None  # Old logic doesn't classify metro
+                                else:
+                                    continue
+                        except Exception as e:
+                            logger.warning(f"New classifier failed, falling back to old logic: {e}")
+                            candidate_data = extract_row_candidate(time_tag, url, request.artist)
+                            if candidate_data:
+                                candidate_data["metro"] = None  # Old logic doesn't classify metro
+                            else:
+                                continue
 
                         # Validate date sanity
                         if not validate_date_sanity(candidate_data["date_iso"]):
@@ -837,13 +868,14 @@ async def scrape_songkick(request: SongkickRequest, _: bool = Depends(verify_api
                         # Build candidate
                         candidate = Candidate(
                             date_iso=candidate_data["date_iso"],
-                            city=candidate_data["city"],
-                            venue=candidate_data["venue"],
+                            city=candidate_data["city"] or "",  # Ensure city is never None
+                            venue=candidate_data["venue"] or "",  # Ensure venue is never None
                             url=candidate_data["url"],
                             source_type=candidate_data["source_type"],
                             snippet=candidate_data["snippet"],
                             canceled=canceled,
                             source_host=candidate_data["source_host"],
+                            metro=candidate_data.get("metro"),
                         )
 
                         # Log per-candidate data at DEBUG level
@@ -855,6 +887,7 @@ async def scrape_songkick(request: SongkickRequest, _: bool = Depends(verify_api
                                 "venue": candidate.venue,
                                 "city": candidate.city,
                                 "url": candidate.url,
+                                "metro": candidate.metro,
                             },
                         )
 
@@ -949,6 +982,7 @@ async def scrape_songkick(request: SongkickRequest, _: bool = Depends(verify_api
                                         snippet=text[:500],
                                         canceled=False,
                                         source_host=urlparse(url).netloc,
+                                        metro=None,  # Fallback parsing doesn't classify metro
                                     )
                                     candidates.append(candidate)
                         except Exception as e:
