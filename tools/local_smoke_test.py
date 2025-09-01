@@ -13,15 +13,16 @@ from typing import List, Dict, Any
 # Test configuration
 BASE_URL = "http://localhost:8000"
 ARTISTS = [
-    "5658139-crooked-colours",      # Crooked Colours
-    "7958783-larry-june",           # Larry June
-    "2946631-jesse-daniel",         # Jesse Daniel
-    "9152349-sinego",               # Sinego
-    "9224649-slenderbodies",        # Slenderbodies
-    "5557998-proxima-parada",       # Proxima Parada
-    "5157743-mo-lowda-and-the-humble", # Mo Lowda & the Humble
-    "10158640-saint-luna"           # Saint Luna
+    "5658139-crooked-colours",  # Crooked Colours
+    "7958783-larry-june",  # Larry June
+    "2946631-jesse-daniel",  # Jesse Daniel
+    "9152349-sinego",  # Sinego
+    "9224649-slenderbodies",  # Slenderbodies
+    "5557998-proxima-parada",  # Proxima Parada
+    "5157743-mo-lowda-and-the-humble",  # Mo Lowda & the Humble
+    "10158640-saint-luna",  # Saint Luna
 ]
+
 
 async def test_health_endpoints():
     """Test health and ready endpoints."""
@@ -32,7 +33,7 @@ async def test_health_endpoints():
         data = response.json()
         assert data["status"] == "healthy"
         print("✓ Health endpoint working")
-        
+
         # Test ready endpoint
         response = await client.get(f"{BASE_URL}/ready")
         assert response.status_code == 200
@@ -40,22 +41,22 @@ async def test_health_endpoints():
         assert data["status"] == "ready"
         print("✓ Ready endpoint working")
 
+
 async def test_songkick_scraping(artist: str) -> List[Dict[str, Any]]:
     """Test Songkick scraping for an artist."""
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(f"{BASE_URL}/scrape-songkick", json={
-                "slug": artist,
-                "max_pages": 3
-            })
-            
+            response = await client.post(
+                f"{BASE_URL}/scrape-songkick", json={"slug": artist, "max_pages": 3}
+            )
+
             if response.status_code != 200:
                 print(f"✗ Failed to scrape {artist}: {response.status_code}")
                 return []
-            
+
             candidates = response.json()
             print(f"✓ {artist}: {len(candidates)} candidates")
-            
+
             # Validate candidates have required fields
             for candidate in candidates:
                 assert "date_iso" in candidate
@@ -64,15 +65,15 @@ async def test_songkick_scraping(artist: str) -> List[Dict[str, Any]]:
                 assert "url" in candidate
                 assert "source_type" in candidate
                 assert "snippet" in candidate
-                
+
                 # Check date sanity
                 date_iso = candidate["date_iso"]
                 year = int(date_iso[:4])
                 assert 1900 <= year <= datetime.now().year + 1, f"Insane year: {year}"
-                
+
                 # Check venue/city presence
                 assert candidate["city"] or candidate["venue"], "No venue or city"
-            
+
             return candidates
     except httpx.TimeoutException:
         print(f"⚠️ Timeout scraping {artist}, skipping...")
@@ -81,67 +82,73 @@ async def test_songkick_scraping(artist: str) -> List[Dict[str, Any]]:
         print(f"⚠️ Error scraping {artist}: {e}")
         return []
 
-async def test_selection(candidates: List[Dict[str, Any]], metro: str) -> Dict[str, Any]:
+
+async def test_selection(
+    candidates: List[Dict[str, Any]], metro: str
+) -> Dict[str, Any]:
     """Test selection logic for a metro area."""
     if not candidates:
         return {}
-    
+
     async with httpx.AsyncClient() as client:
-        response = await client.post(f"{BASE_URL}/select-latest", json={
-            "metro": metro,
-            "candidates": candidates
-        })
-        
+        response = await client.post(
+            f"{BASE_URL}/select-latest", json={"metro": metro, "candidates": candidates}
+        )
+
         if response.status_code != 200:
             print(f"✗ Failed to select for {metro}: {response.status_code}")
             return {}
-        
+
         result = response.json()
-        print(f"✓ {metro} selection: {result.get('date_iso', 'unknown')} at {result.get('venue', 'unknown')}")
+        print(
+            f"✓ {metro} selection: {result.get('date_iso', 'unknown')} at {result.get('venue', 'unknown')}"
+        )
         return result
+
 
 async def main():
     """Run the complete smoke test."""
     print("🚀 Starting Last-Show Oracle Local Smoke Test")
     print("=" * 50)
-    
+
     # Test health endpoints
     await test_health_endpoints()
     print()
-    
+
     # Test each artist
     all_results = {}
     for artist in ARTISTS:
         print(f"Testing artist: {artist}")
         candidates = await test_songkick_scraping(artist)
-        
+
         if candidates:
             # Test SF selection
             sf_result = await test_selection(candidates, "SF")
             if sf_result:
                 all_results[f"{artist}_sf"] = sf_result
-            
+
             # Test NYC selection
             nyc_result = await test_selection(candidates, "NYC")
             if nyc_result:
                 all_results[f"{artist}_nyc"] = nyc_result
-        
+
         print()
-        
+
         # Add delay between artists to avoid overwhelming the service
         if artist != ARTISTS[-1]:  # Don't delay after the last artist
             print("⏳ Waiting 2 seconds before next artist...")
             await asyncio.sleep(2)
-    
+
     # Save results to tools directory
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     filename = f"tools/local_smoke_test_{timestamp}.json"
-    
+
     with open(filename, "w") as f:
         json.dump(all_results, f, indent=2)
-    
+
     print(f"📊 Results saved to {filename}")
     print("🎉 Local smoke test completed!")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

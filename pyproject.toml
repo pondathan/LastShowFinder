@@ -1,0 +1,10 @@
+[tool.black]
+line-length = 88
+target-version = ["py38"]
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = [
+    "E203",  # black-compatible slicing
+    "W503"   # black-compatible line break before binary operator
+]

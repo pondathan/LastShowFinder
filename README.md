@@ -29,7 +29,7 @@ uvicorn worker:app --host 0.0.0.0 --port 8000 --workers 2
 
 ### 🚨 Having Issues?
 
-**Python 3.13+ compatibility problems?** See [Quick Troubleshooting](QUICK_TROUBLESHOOTING.md) or [Full Setup Guide](venv-setup-guide.md)
+**Python 3.13+ compatibility problems?** See [Quick Troubleshooting](docs/guides/QUICK_TROUBLESHOOTING.md) or [Full Setup Guide](docs/guides/venv-setup-guide.md)
 
 **Common quick fixes:**
 ```bash

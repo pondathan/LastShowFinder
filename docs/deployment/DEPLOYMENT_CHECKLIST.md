@@ -17,8 +17,8 @@
 - [ ] LOG_LEVEL=info ✓
 - [ ] HTTP_TIMEOUT_SECONDS=10 ✓
 - [ ] HTTP_MAX_PER_HOST=2 ✓
-- [ ] VENUE_WHITELISTS_PATH=config/venues.json ✓
-- [ ] ALIASES_PATH=config/aliases.json ✓
+- [x] VENUE_WHITELISTS_PATH=config/venues.json ✓
+- [x] ALIASES_PATH=config/aliases.json ✓
 - [ ] API_KEY (configured for production) ✓
 
 ### 3. Local Smoke Test Results
@@ -39,10 +39,10 @@
 ### 1. Local Testing
 ```bash
 # Start the service
-./start_local.sh
+./scripts/start_local.sh
 
 # Run smoke tests
-python local_smoke_test.py
+python tools/local_smoke_test.py
 
 # Run unit tests
 pytest tests/ -v

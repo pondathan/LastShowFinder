@@ -96,10 +96,10 @@ HTTP_MAX_PER_HOST=2
 ### Quick Start
 ```bash
 # Start the service
-./start_local.sh
+./scripts/start_local.sh
 
 # Run smoke tests
-python local_smoke_test.py
+python tools/local_smoke_test.py
 
 # Run unit tests
 pytest tests/ -v

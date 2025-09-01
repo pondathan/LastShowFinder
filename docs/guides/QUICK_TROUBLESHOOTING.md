@@ -84,7 +84,7 @@ Before starting development:
 3. **Check installed packages**: `pip list`
 4. **Look for error patterns** in the output
 5. **Try the quick fixes** above
-6. **Check the full troubleshooting guide** in `venv-setup-guide.md`
+6. **Check the full troubleshooting guide** in `docs/guides/venv-setup-guide.md`
 
 ## 📞 Common Error Messages
 
