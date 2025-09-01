@@ -1,6 +1,6 @@
 import re
 from typing import Optional, Tuple
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup, Tag  # noqa: F401 - BeautifulSoup needed for Tag methods
 
 # Metro slugs (anchor/most-reliable)
 NYC_METRO_SLUG_RE = re.compile(r"/metro-areas/\d+-(?:us-)?new-york-ny\b", re.I)
@@ -38,7 +38,8 @@ SF_CITIES = {
 
 
 def extract_venue_specific_text(row: Tag, venue: str) -> Optional[str]:
-    """Extract text specific to a venue, avoiding text from other shows in the same row."""
+    """Extract text specific to a venue, avoiding text from other shows in the same
+    row."""
     if not venue:
         return None
 
@@ -166,7 +167,8 @@ def extract_songkick_row_candidate(
     if not date_iso:
         return None
 
-    # Extract just the date part from ISO 8601 datetime (e.g., 2023-10-27T20:00:00-0400 -> 2023-10-27)
+    # Extract just the date part from ISO 8601 datetime
+    # (e.g., 2023-10-27T20:00:00-0400 -> 2023-10-27)
     if "T" in date_iso:
         date_iso = date_iso.split("T")[0]
 

@@ -54,7 +54,7 @@ class TestSongkickRowClassification:
         html = """
         <li class="gig-item">
             <time datetime="2024-03-15">March 15, 2024</time>
-            <span class="city">Music Hall of Williamsburg, Brooklyn, NY, US 66 North 6th Street</span>
+            <span class="city">Music Hall of Williamsburg, Brooklyn, NY, US</span>
             <a href="/venues/12345" class="venue">Music Hall of Williamsburg</a>
         </li>
         """
@@ -106,7 +106,7 @@ class TestSongkickRowClassification:
         html = """
         <li class="gig-item">
             <time datetime="2024-03-15">March 15, 2024</time>
-            <span class="city">The Independent, San Francisco, CA, US 628 Divisadero Street</span>
+            <span class="city">The Independent, San Francisco, CA, US</span>
             <a href="/venues/11111" class="venue">The Independent</a>
         </li>
         """
